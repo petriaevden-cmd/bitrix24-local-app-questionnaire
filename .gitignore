@@ -1,0 +1,22 @@
+# Конфигурация с секретами — не коммитить!
+anketa-kc/config.local.php
+*.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Composer / PHP
+vendor/
+composer.lock

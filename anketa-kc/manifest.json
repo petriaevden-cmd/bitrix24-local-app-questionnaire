@@ -1,0 +1,21 @@
+{
+  "slug": "anketa-kc",
+  "version": "1.0.0",
+  "name": {
+    "ru": "Анкета КЦ",
+    "en": "KC Questionnaire"
+  },
+  "description": {
+    "ru": "Локальное приложение для заполнения анкеты клиента в карточке лида CRM"
+  },
+  "install_url": "https://your-server.ru/anketa-kc/install.php",
+  "handler_url": "https://your-server.ru/anketa-kc/index.php",
+  "scope": ["crm", "calendar", "user", "im", "placement"],
+  "placements": [
+    {
+      "placement": "CRM_LEAD_DETAIL_TAB",
+      "handler": "https://your-server.ru/anketa-kc/index.php",
+      "title": "Анкета КЦ"
+    }
+  ]
+}

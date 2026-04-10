@@ -1,0 +1,141 @@
+/**
+ * style.css — стили виджета «Анкета КЦ»
+ * Встраивается в iframe Битрикс24, поэтому стили изолированы.
+ */
+
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #333;
+  background: #f9f9f9;
+  padding: 12px;
+}
+
+/* === Секции формы === */
+.form-section {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* === Поля формы === */
+.form-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.form-label {
+  flex: 0 0 180px;
+  font-size: 12px;
+  color: #555;
+  padding-top: 6px;
+  line-height: 1.4;
+}
+.form-control {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+.form-control:focus {
+  outline: none;
+  border-color: #007aff;
+  box-shadow: 0 0 0 2px rgba(0,122,255,0.15);
+}
+select.form-control { cursor: pointer; }
+textarea.form-control { resize: vertical; min-height: 60px; }
+
+/* === Кнопки === */
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn-primary  { background: #007aff; color: #fff; }
+.btn-primary:hover  { background: #0062cc; }
+.btn-secondary { background: #e8e8e8; color: #333; }
+.btn-secondary:hover { background: #d4d4d4; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === Слоты календаря === */
+#manager-slots { margin-top: 8px; }
+.manager-block { margin-bottom: 12px; }
+.manager-name  { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #444; }
+.slots-grid    { display: flex; flex-wrap: wrap; gap: 6px; }
+.slot-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid #007aff;
+  border-radius: 3px;
+  background: #fff;
+  color: #007aff;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.slot-btn:hover   { background: #007aff; color: #fff; }
+.slot-btn.booked  { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; cursor: default; }
+.slot-btn.past    { opacity: 0.4; cursor: not-allowed; }
+
+/* === Состояния === */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: #888;
+  font-size: 13px;
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ddd;
+  border-top-color: #007aff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg {
+  padding: 10px 14px;
+  background: #fff0f0;
+  border: 1px solid #ffcdd2;
+  border-radius: 4px;
+  color: #c62828;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.success-msg {
+  padding: 10px 14px;
+  background: #f0fff4;
+  border: 1px solid #c8e6c9;
+  border-radius: 4px;
+  color: #2e7d32;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
