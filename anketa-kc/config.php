@@ -1,35 +1,32 @@
 <?php
 /**
- * Конфигурация локального приложения «Анкета КЦ»
- * Скопируйте этот файл в config.local.php и заполните реальными значениями.
+ * config.php — конфигурация локального приложения «Анкета (МКЦ + МП)»
+ * Скопируйте в config.local.php и заполните реальными значениями.
  * config.local.php НЕ коммитится в репозиторий.
  */
 
-// URL вашего портала Битрикс24
+// URL вашего портала Bitrix24
 define('PORTAL_URL', 'https://your-portal.bitrix24.ru');
 
 // OAuth 2.0 — данные локального приложения
 define('APP_CLIENT_ID',     'local.XXXXXXXXXXX');
 define('APP_CLIENT_SECRET', 'XXXXXXXXXXXXXXXXXXX');
 
-// ID отдела «Отдел продаж / Колл-центр» (используется для user.get)
+// ID отдела МКЦ (используется для user.get в app.js)
 define('SALES_DEPT_ID', 42);
 
-// Рабочие часы для слотов календаря (UTC+3, МСК)
-define('WORK_HOUR_START', 9);
-define('WORK_HOUR_END',   20);
-
-// Продолжительность слота (минуты)
-define('SLOT_DURATION_MIN', 30);
+// Шаг слота — только 60 минут (часовые слоты)
+define('SLOT_DURATION_MIN', 60);
 
 // Горизонт показа слотов (дней вперёд)
 define('SLOT_HORIZON_DAYS', 7);
 
 // Интервал polling-обновления слотов (секунды)
-define('POLLING_INTERVAL', 15);
+define('POLLING_INTERVAL', 30);
 
-// Окно «горячего» клиента (минуты)
-define('HOT_WINDOW_MIN', 30);
+// Минимум свободных слотов на день; если меньше — автопереход на следующий день
+define('MIN_SLOTS_PER_DAY', 3);
 
-// Рабочие дни (1=Пн ... 7=Вс)
-define('WORKDAYS', '1,2,3,4,5,6');
+// Диапазон «разумного» времени клиента (по его TZ)
+define('CLIENT_HOUR_MIN', 9);
+define('CLIENT_HOUR_MAX', 20);

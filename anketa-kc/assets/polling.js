@@ -1,32 +1,18 @@
 /**
- * polling.js — polling-обновление слотов каждые 15 секунд
+ * polling.js — периодическое обновление расписания
  *
- * Запускается после initManagerList().
- * Останавливается при закрытии вкладки (beforeunload).
+ * Интервал берётся из APP_CONFIG.pollingMs (задан в index.php из config.php).
+ * Вызывает loadSlots() из calendar.js если МП выбран.
  */
 
 'use strict';
 
-let pollingTimer = null;
-
-/**
- * Запуск polling
- */
 function startPolling() {
-  if (pollingTimer) return; // уже запущен
-  pollingTimer = setInterval(function () {
-    refreshAllManagerSlots();
-  }, 15000); // 15 сек
-}
+  const ms = (window.APP_CONFIG || {}).pollingMs || 30000;
 
-/**
- * Остановка polling
- */
-function stopPolling() {
-  if (pollingTimer) {
-    clearInterval(pollingTimer);
-    pollingTimer = null;
-  }
+  setInterval(function () {
+    if (typeof loadSlots === 'function' && typeof _currentCalId !== 'undefined' && _currentCalId) {
+      loadSlots();
+    }
+  }, ms);
 }
-
-window.addEventListener('beforeunload', stopPolling);
