@@ -1,7 +1,7 @@
 <?php
 /**
  * index.php — основной iframe-виджет анкеты КЦ
- * Загружается Битрикс24 в таб карточки лида (CRM_LEAD_DETAIL_TAB)
+ * Загружается Битрикс248 в таб карточки лида (CRM_LEAD_DETAIL_TAB)
  */
 require_once __DIR__ . '/config.php';
 ?>
@@ -13,6 +13,8 @@ require_once __DIR__ . '/config.php';
   <title>Анкета КЦ</title>
   <!-- BX24 JS SDK -->
   <script src="https://<?= htmlspecialchars(parse_url(PORTAL_URL, PHP_URL_HOST)) ?>/bitrix/js/rest/bx24.js"></script>
+  <!-- Дизайн-токены — подключать первыми -->
+  <link rel="stylesheet" href="assets/tokens.css">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
