@@ -3,7 +3,7 @@
  * index.php — основной iframe-виджет анкеты (МКЦ + МП)
  * Загружается Bitrix24 во вкладке карточки лида (CRM_LEAD_DETAIL_TAB)
  *
- * Frontend: Tailwind CSS 4 CDN + Flowbite 2
+ * Frontend: Tailwind CSS 4 + Flowbite 2
  * Самописные CSS-файлы НЕ подключаются.
  */
 require_once __DIR__ . '/config.php';
@@ -27,14 +27,18 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
   <!-- BX24 JS SDK -->
   <script src="https://<?= $portalHost ?>/bitrix/js/rest/bx24.js"></script>
 
-  <!-- Tailwind CSS 4 CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS v4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
-  <!-- Flowbite CSS -->
+  <!-- Flowbite 2 CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" />
 
   <style>
-    /* Только iframe-специфичный reset — не заменяет Tailwind */
+    /*
+     * Только iframe-специфичный reset.
+     * Не заменяет Tailwind — устраняет стандартные отступы браузера
+     * внутри embed-контекста Bitrix24.
+     */
     html, body { margin: 0; padding: 0; overflow: hidden; }
     #app { height: 100vh; overflow: hidden; }
     .panel-scroll { overflow-y: auto; }

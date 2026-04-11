@@ -18,7 +18,7 @@
 
 | Направление | Решение | Примечание |
 |---|---|---|
-| Frontend styles | **Tailwind CSS 4** | CDN-сборка, utility-first |
+| Frontend styles | **Tailwind CSS 4** | CDN-сборка (`@tailwindcss/browser@4` via jsdelivr), utility-first |
 | UI components | **Flowbite 2** | Готовые компоненты поверх Tailwind |
 | CRM / portal | **Bitrix24 REST API + BX24 JS SDK** | Локальное приложение, `CRM_LEAD_DETAIL_TAB` |
 | Backend | **PHP** | `config.php`, `install.php`, `proxy.php`, `uninstall.php` |
@@ -33,9 +33,22 @@
 
 - Любой новый экран или переработка строится на **Tailwind CSS 4**.
 - Стандартные UI-элементы (кнопки, формы, карточки, вкладки, алерты, спиннеры) берутся из **Flowbite**.
-- Самописные CSS-файлы (`tokens.css`, `style.css`) **не подключаются** в `index.php` — помечены как устаревшие.
-- Кастомные стили допустимы только точечно для Bitrix24 iframe/embed-особенностей.
+- Самописные CSS-файлы (`tokens.css`, `style.css`) **не подключаются** в `index.php` — помечены как устаревшие, оставлены только в git-истории.
+- Кастомные `<style>` допустимы только точечно для Bitrix24 iframe/embed-особенностей (reset отступов, кастомный скроллбар).
 - Новый дизайн **не проектируется с нуля** при каждой итерации.
+
+### CDN-подключение
+
+```html
+<!-- Tailwind CSS v4 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<!-- Flowbite 2 CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" />
+
+<!-- Flowbite 2 JS (в конце body) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+```
 
 ### Layout
 
@@ -216,5 +229,7 @@ Tailwind CSS v4 требует: Safari 16.4+, Chrome 111+, Firefox 128+.
 | 13 | Логика часового пояса клиента + двойное время в слотах | ✅ Зафиксировано в ТЗ |
 | 14 | Автопереход на следующий день при нехватке слотов | ✅ Зафиксировано в ТЗ |
 | 15 | Уточнить часы работы МП по скриншоту из Bitrix24 | ✅ Выполнено |
-| 16 | Реализовать timezone-логику в `calendar.js` | 🔜 Следующий шаг |
-| 17 | Реализовать `user.current` в шапке `index.php` | 🔜 Следующий шаг |
+| 16 | Обновить CDN Tailwind: `cdn.tailwindcss.com` → `@tailwindcss/browser@4` | ✅ Выполнено |
+| 17 | Очистить `style.css` и `tokens.css` (deprecated) | ✅ Выполнено |
+| 18 | Реализовать timezone-логику в `calendar.js` | 🔜 Следующий шаг |
+| 19 | Реализовать `user.current` в шапке `index.php` | 🔜 Следующий шаг |
