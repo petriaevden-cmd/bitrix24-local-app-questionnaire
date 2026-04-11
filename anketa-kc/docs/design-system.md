@@ -1,217 +1,223 @@
-# Дизайн-стандарт — Анкета КЦ
+# Дизайн-система — Анкета КЦ
 
-Этот документ описывает визуальные стандарты проекта.  
-Все токены объявлены в `anketa-kc/assets/tokens.css` и должны использоваться через CSS-переменные — без хардкода значений напрямую в коде.
+> **Стек:** Tailwind CSS 4 + Flowbite 2  
+> Самописные CSS-файлы (`tokens.css`, `style.css`) не используются.
+
+---
+
+## Принципы
+
+- Весь UI строится через **utility-классы Tailwind**. Нет отдельных CSS-классов для компонентов `form-field`, `card-section` и т.п.
+- Готовые интерактивные элементы берутся из **Flowbite** (вкладки, карточки, кнопки, формы, алерты).
+- Кастомные стили допустимы только для Bitrix24 iframe-особенностей (например, `overflow: hidden` на `body`).
+- Новый дизайн не проектируется с нуля при каждой итерации — компоненты развиваются внутри одного стека.
 
 ---
 
 ## Подключение
 
-В `index.php` токены подключаются **первыми**, до `style.css`:
-
 ```html
-<link rel="stylesheet" href="./assets/tokens.css">
-<link rel="stylesheet" href="./assets/style.css">
+<!-- Tailwind CSS 4 CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: { DEFAULT: '#2563eb', dark: '#1d4ed8' },
+        },
+      },
+    },
+  };
+</script>
+
+<!-- Flowbite CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css" />
+
+<!-- Flowbite JS (в конце body) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
 ```
 
 ---
 
-## Цвета
+## Палитра
 
-### Акцент (Primary)
+Цветовые токены определяются через `tailwind.config` в `<script>` внутри `index.php`.
 
-| Переменная | Значение | Применение |
+| Токен | Значение | Применение |
 |---|---|---|
-| `--color-primary` | `#007aff` | Кнопки, ссылки, активные слоты, бордюр фокуса |
-| `--color-primary-hover` | `#0062cc` | Hover-состояние primary-кнопки |
-| `--color-primary-active` | `#004fa3` | Active/нажатие |
-| `--color-primary-light` | `rgba(0,122,255,0.12)` | Фоновое кольцо фокуса у полей ввода |
-| `--color-primary-border` | `#007aff` | Бордюр незабронированного слота |
-
-### Нейтральные
-
-| Переменная | Значение | Применение |
-|---|---|---|
-| `--color-text-primary` | `#1a1a1a` | Заголовки секций (`.section-title`) |
-| `--color-text-body` | `#333333` | Основной текст, значения полей |
-| `--color-text-secondary` | `#555555` | Лейблы полей (`.form-label`) |
-| `--color-text-muted` | `#888888` | Плейсхолдеры, вспом. текст, `.loading` |
-| `--color-text-disabled` | `#aaaaaa` | Неактивные элементы |
-| `--color-text-inverse` | `#ffffff` | Текст на цветном фоне (кнопки) |
-| `--color-bg-page` | `#f9f9f9` | Фон `body`/iframe |
-| `--color-bg-card` | `#ffffff` | Фон `.form-section` |
-| `--color-bg-input` | `#ffffff` | Фон полей ввода |
-| `--color-bg-btn-secondary` | `#e8e8e8` | Фон `.btn-secondary` |
-| `--color-bg-btn-secondary-hover` | `#d4d4d4` | Hover `.btn-secondary` |
-| `--color-border-base` | `#e0e0e0` | Бордюр карточек `.form-section` |
-| `--color-border-input` | `#cccccc` | Бордюр `input`, `select`, `textarea` |
-| `--color-border-divider` | `#f0f0f0` | Разделитель под `.section-title` |
-
-### Состояния
-
-| Переменная | Применение |
-|---|---|
-| `--color-success` / `--color-success-bg` / `--color-success-border` | `.success-msg`, забронированный слот |
-| `--color-error` / `--color-error-bg` / `--color-error-border` | `.error-msg`, ошибки валидации |
-| `--color-warning` / `--color-warning-bg` / `--color-warning-border` | Предупреждения (зарезервировано) |
-
-> **Правило:** никогда не использовать цвета состояний как акцент и наоборот.
+| `primary` | `#2563eb` | Основной акцент (CTA, прогресс-бар, активные элементы) |
+| `primary.dark` | `#1d4ed8` | hover-состояние |
+| `gray-50` | Tailwind | Фон панелей |
+| `gray-100` | Tailwind | Фон `<body>` |
+| `gray-200` | Tailwind | Границы, разделители |
+| `gray-800` | Tailwind | Основной текст |
+| `red-50 / red-700` | Tailwind | Ошибки |
+| `green-50 / green-700` | Tailwind | Успех |
+| `blue-50 / blue-600` | Tailwind | Информационные элементы |
 
 ---
 
 ## Типографика
 
-### Шрифт
-
-Проект использует **системный стек** — не подгружает внешние шрифты, чтобы не замедлять iframe:
-
-```css
-font-family: var(--font-family-base);
-/* -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif */
-```
-
-### Размерная шкала
-
-| Переменная | px | Применение |
-|---|---|---|
-| `--font-size-xs` | 11px | Текст кнопок слотов |
-| `--font-size-sm` | 12px | Лейблы полей, сообщения об ошибках/успехе, имена менеджеров |
-| `--font-size-base` | 13px | Основной текст, поля ввода, кнопки |
-| `--font-size-md` | 14px | Заголовки секций (`.section-title`) |
-| `--font-size-lg` | 16px | Зарезервировано для крупных заголовков |
-
-> **Минимальный размер текста — 11px.** Мельче не использовать.
-
-### Насыщенность
-
-| Переменная | Значение | Применение |
-|---|---|---|
-| `--font-weight-normal` | 400 | Обычный текст, поля |
-| `--font-weight-medium` | 500 | Кнопки |
-| `--font-weight-semibold` | 600 | Заголовки секций, имена менеджеров |
-| `--font-weight-bold` | 700 | Зарезервировано |
-
----
-
-## Отступы
-
-Все отступы кратны **4px**.
-
-| Переменная | px | Применение |
-|---|---|---|
-| `--space-1` | 4 | Минимальный зазор |
-| `--space-2` | 8 | Gap в строках, между слотами |
-| `--space-3` | 12 | Внутренний отступ мелких блоков |
-| `--space-4` | 16 | Padding карточек, margin между секциями |
-| `--space-5` | 20 | Padding кнопок по горизонтали |
-| `--space-6` | 24 | Крупные внутренние отступы |
-| `--space-8` | 32 | Разделение крупных блоков |
-
-Для конкретных компонентов есть именованные токены — `--padding-card`, `--margin-section`, `--label-width` и др. Использовать их, а не `--space-*` напрямую там, где они определены.
-
----
-
-## Скругления
-
-| Переменная | px | Применение |
-|---|---|---|
-| `--radius-sm` | 3px | Кнопки-слоты |
-| `--radius-base` | 4px | Поля ввода (`input`, `select`, `textarea`), кнопки |
-| `--radius-md` | 6px | Карточки / секции формы (`.form-section`) |
-| `--radius-full` | 9999px | Теги-пилюли (зарезервировано) |
-
----
-
-## Тени
-
-| Переменная | Применение |
+| Роль | Классы Tailwind |
 |---|---|
-| `--shadow-card` | Карточки — `none` (используется только бордюр) |
-| `--shadow-focus` | Кольцо фокуса у полей ввода |
-| `--shadow-popup` | Всплывающие панели, дропдауны |
+| Шапка / название приложения | `text-sm font-bold text-gray-900` |
+| Название блока формы | `text-xs font-semibold text-gray-700` |
+| Метка поля | `text-xs font-medium text-gray-500` |
+| Основной текст | `text-xs text-gray-800` |
+| Второстепенный текст | `text-xs text-gray-400` |
+| Подсказка под полем | `text-xs text-gray-400` |
 
 ---
 
-## Анимации
+## Компоненты
 
-| Переменная | Значение | Применение |
-|---|---|---|
-| `--transition-fast` | `0.12s ease` | Слоты (быстрый hover) |
-| `--transition-base` | `0.15s ease` | Кнопки, поля (стандарт) |
-| `--transition-medium` | `0.25s ease` | Появление блоков, раскрытие |
+### Кнопка primary
 
----
-
-## Компоненты — правила использования токенов
-
-### Поле ввода (input, select, textarea)
-
-```css
-border: 1px solid var(--color-border-input);
-border-radius: var(--radius-base);
-padding: var(--padding-input-v) var(--padding-input-h);
-font-size: var(--font-size-base);
-background: var(--color-bg-input);
-transition: border-color var(--transition-base);
-
-&:focus {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-focus);
-}
+```html
+<button class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white
+               text-xs font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 transition-colors">
+  Сохранить
+</button>
 ```
 
-### Кнопка Primary
+### Кнопка secondary
 
-```css
-background: var(--color-primary);
-color: var(--color-text-inverse);
-border-radius: var(--radius-base);
-padding: var(--padding-btn-v) var(--padding-btn-h);
-font-size: var(--font-size-base);
-font-weight: var(--font-weight-medium);
-transition: background var(--transition-base);
-
-&:hover { background: var(--color-primary-hover); }
+```html
+<button class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-200
+               bg-white text-xs text-gray-600 hover:bg-gray-50 transition-colors">
+  Сбросить
+</button>
 ```
 
-### Кнопка Secondary
+### Поле формы (Input)
 
-```css
-background: var(--color-bg-btn-secondary);
-color: var(--color-text-body);
-/* все остальные токены — те же, что у Primary */
-
-&:hover { background: var(--color-bg-btn-secondary-hover); }
+```html
+<div class="flex flex-col gap-1">
+  <label class="block text-xs font-medium text-gray-500">Метка</label>
+  <input type="text"
+         class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+</div>
 ```
 
-### Секция формы (карточка)
+### Select
 
-```css
-background: var(--color-bg-card);
-border: 1px solid var(--color-border-base);
-border-radius: var(--radius-md);
-padding: var(--padding-card);
-margin-bottom: var(--margin-section);
+```html
+<select class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+               focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+  <option>— выбрать —</option>
+</select>
+```
+
+### Textarea
+
+```html
+<textarea rows="2"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                 focus:ring-blue-500 focus:border-blue-500 block w-full p-2 resize-none">
+</textarea>
+```
+
+### Блок формы (Card с заголовком)
+
+```html
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+  <!-- Заголовок -->
+  <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+    <span class="flex items-center gap-2 text-xs font-semibold text-gray-700">
+      <span class="w-5 h-5 rounded bg-blue-50 flex items-center justify-center text-blue-500">₽</span>
+      1. Финансовые данные
+    </span>
+  </div>
+  <!-- Тело: сетка полей -->
+  <div class="px-3 py-3 grid grid-cols-2 gap-2 text-xs">
+    <!-- поля -->
+  </div>
+</div>
+```
+
+### Alert — ошибка
+
+```html
+<div class="flex items-center p-3 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert">
+  <svg class="shrink-0 inline w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+  </svg>
+  <span>Текст ошибки</span>
+</div>
+```
+
+### Alert — успех
+
+```html
+<div class="flex items-center p-3 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200" role="alert">
+  <svg class="shrink-0 w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+  </svg>
+  <span>Анкета сохранена.</span>
+</div>
+```
+
+### Spinner (загрузка)
+
+```html
+<div role="status">
+  <svg class="w-4 h-4 text-gray-200 animate-spin fill-blue-500" viewBox="0 0 100 101" fill="none">
+    <path d="M100 50.6C100 78.2 77.6 100.6 50 100.6S0 78.2 0 50.6 22.4.6 50 .6s50 22.4 50 50z" fill="currentColor"/>
+    <path d="M93.97 39.04a4.28 4.28 0 0 1 2.69 5.4 50.04 50.04 0 0 1-12.44 21.54 4.28 4.28 0 0 1-6.05-6.05 41.48 41.48 0 0 0 10.31-17.85 4.28 4.28 0 0 1 5.49-3.04z" fill="currentFill"/>
+  </svg>
+</div>
+```
+
+### Слот расписания (свободный)
+
+```html
+<button type="button"
+  class="px-2 py-1 text-xs rounded-md bg-blue-50 text-blue-700 border border-blue-100
+         hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors whitespace-nowrap">
+  вт, 12 апр 09:00
+</button>
+```
+
+### Вкладки правой панели (Flowbite Tabs)
+
+```html
+<ul class="flex text-xs font-medium" role="tablist">
+  <li role="presentation">
+    <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-t-lg
+                   border-b-2 border-blue-600 text-blue-600 bg-gray-50"
+            data-tabs-target="#tab-schedule" type="button" role="tab">
+      Расписание
+    </button>
+  </li>
+</ul>
 ```
 
 ---
 
-## Запрещённые практики
+## Шаблонные CSS-классы (Bitrix24 iframe)
 
-- ❌ Хардкодить цвет: `color: #007aff` — использовать `color: var(--color-primary)`
-- ❌ Хардкодить отступ: `padding: 16px` — использовать `padding: var(--padding-card)`
-- ❌ Добавлять новый цвет без записи в `tokens.css`
-- ❌ Использовать `font-size` без ссылки на токен
-- ❌ Дублировать значение токена в нескольких местах
+Допускаемые инлайн-стили в `<style>` внутри `index.php` — только для iframe-особенностей:
+
+```css
+/* Минимальный reset для Bitrix24 iframe */
+html, body { margin: 0; padding: 0; overflow: hidden; }
+#app { height: 100vh; overflow: hidden; }
+.panel-scroll { overflow-y: auto; }
+
+/* Кастомный скроллбар */
+.panel-scroll::-webkit-scrollbar { width: 4px; }
+.panel-scroll::-webkit-scrollbar-track { background: transparent; }
+.panel-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+```
 
 ---
 
-## Как добавить новый токен
+## Что нельзя
 
-1. Добавить переменную в `tokens.css` в нужную группу с комментарием
-2. Описать её в этом документе в соответствующей таблице
-3. Использовать только через переменную
-
----
-
-*Последнее обновление: апрель 2026*
+- Подключать `tokens.css` или `style.css`.
+- Создавать новые отдельные CSS-файлы для компонентов.
+- Использовать `!important` для переопределения Tailwind.
+- Проектировать новый визуальный язык с нуля при каждой итерации.
