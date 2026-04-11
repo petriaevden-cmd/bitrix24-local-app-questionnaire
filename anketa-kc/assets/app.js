@@ -2,6 +2,8 @@
  * app.js — инициализация приложения
  * Запускает BX24.init, получает placement info (leadId),
  * делает batch-запрос: crm.lead.get + user.current + user.get (менеджеры)
+ *
+ * UI-состояния управляются через Tailwind utility-классы (hidden, flex, etc.)
  */
 
 'use strict';
@@ -34,33 +36,76 @@ BX24.init(function () {
         return;
       }
 
-      const lead = results.getLead.data();
-      currentUser = results.getCurrentUser.data();
-      managers = results.getManagers.data() || [];
+      const lead    = results.getLead.data();
+      currentUser   = results.getCurrentUser.data();
+      managers      = results.getManagers.data() || [];
 
       CURRENT_USERNAME = [currentUser.LASTNAME, currentUser.NAME, currentUser.SECONDNAME]
         .filter(Boolean).join(' ').trim();
+
+      // Обновляем шапку
+      const titleEl = document.getElementById('lead-title');
+      if (titleEl) titleEl.textContent = lead.TITLE || ('Лид #' + leadId);
+
+      const userEl = document.getElementById('bx24-user');
+      if (userEl) userEl.textContent = CURRENT_USERNAME || 'Пользователь';
 
       initForm(lead);
       initManagerList(managers);
       startPolling();
 
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('anketa-form').style.display = 'block';
+      // Скрываем лоадер, показываем форму
+      const loading = document.getElementById('loading');
+      if (loading) loading.classList.add('hidden');
+
+      const form = document.getElementById('anketa-form');
+      if (form) {
+        form.classList.remove('hidden');
+        form.classList.add('flex');
+      }
     }
   );
 });
 
+/**
+ * Показать сообщение об ошибке (Flowbite Alert)
+ * @param {string} msg
+ */
 function showError(msg) {
-  document.getElementById('loading').style.display = 'none';
-  const el = document.getElementById('error-msg');
-  el.textContent = msg;
-  el.style.display = 'block';
+  const loading = document.getElementById('loading');
+  if (loading) loading.classList.add('hidden');
+
+  const wrap = document.getElementById('error-msg');
+  const text = document.getElementById('error-text');
+  if (wrap && text) {
+    text.textContent = msg;
+    wrap.classList.remove('hidden');
+    wrap.classList.add('flex');
+  }
 }
 
-function showSuccess(msg) {
+/**
+ * Показать сообщение об успехе (Flowbite Alert, автоскрытие через 4с)
+ */
+function showSuccess() {
   const el = document.getElementById('success-msg');
-  el.textContent = msg || 'Анкета успешно сохранена!';
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('flex');
+
+  const status = document.getElementById('save-status');
+  if (status) {
+    const now = new Date();
+    status.textContent = 'Сохранено в ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
+  const saved = document.getElementById('last-saved');
+  if (saved) {
+    const now = new Date();
+    saved.textContent = 'Сохранено в ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  setTimeout(function () {
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+  }, 4000);
 }

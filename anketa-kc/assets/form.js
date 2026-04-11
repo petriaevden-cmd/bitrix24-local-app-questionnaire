@@ -1,6 +1,7 @@
 /**
  * form.js — логика формы анкеты
- * Рендер полей, валидация, сбор данных, сохранение в CRM + таймлайн.
+ * Рендер полей через Tailwind CSS 4 + Flowbite,
+ * валидация, сбор данных, сохранение в CRM + таймлайн.
  *
  * Поля анкеты (26 UF_CRM_KC_* полей):
  *
@@ -43,35 +44,236 @@
 
 'use strict';
 
+// ─── Вспомогательные функции рендера (Tailwind + Flowbite) ───────────────────
+
+/**
+ * Текстовое поле
+ */
+function fieldText(id, label, value, opts) {
+  opts = opts || {};
+  return `
+    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
+      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+      <input id="${id}" name="${id}" type="text"
+             value="${escHtml(value || '')}"
+             ${opts.readonly ? 'readonly' : ''}
+             ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2
+                    ${opts.readonly ? 'cursor-default' : ''}
+                    disabled:opacity-50">
+      ${opts.hint ? '<p class="text-xs text-gray-400">' + escHtml(opts.hint) + '</p>' : ''}
+    </div>`;
+}
+
+/**
+ * Числовое поле
+ */
+function fieldNumber(id, label, value, opts) {
+  opts = opts || {};
+  return `
+    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
+      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+      <input id="${id}" name="${id}" type="number"
+             value="${escHtml(String(value || ''))}"
+             ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
+             ${opts.min !== undefined ? 'min="' + opts.min + '"' : ''}
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+      ${opts.hint ? '<p class="text-xs text-gray-400">' + escHtml(opts.hint) + '</p>' : ''}
+    </div>`;
+}
+
+/**
+ * Select (enumeration)
+ */
+function fieldSelect(id, label, value, options, opts) {
+  opts = opts || {};
+  const optHtml = options.map(function(o) {
+    const selected = String(o.value) === String(value || '') ? 'selected' : '';
+    return `<option value="${escHtml(String(o.value))}" ${selected}>${escHtml(o.label)}</option>`;
+  }).join('');
+  return `
+    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
+      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+      <select id="${id}" name="${id}"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                     focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+        <option value="">— выбрать —</option>
+        ${optHtml}
+      </select>
+    </div>`;
+}
+
+/**
+ * Textarea
+ */
+function fieldTextarea(id, label, value, opts) {
+  opts = opts || {};
+  return `
+    <div class="flex flex-col gap-1 col-span-2">
+      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+      <textarea id="${id}" name="${id}" rows="${opts.rows || 2}"
+                ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                       focus:ring-blue-500 focus:border-blue-500 block w-full p-2 resize-none">${escHtml(value || '')}</textarea>
+    </div>`;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ─── Опции для enumeration-полей ────────────────────────────────────────────
+
+const OPTS_INCOME_OFFICIAL = [
+  { value: 'high',   label: 'Высокий (от 50 000)' },
+  { value: 'medium', label: 'Средний (20 000–50 000)' },
+  { value: 'low',    label: 'Низкий (до 20 000)' },
+  { value: 'none',   label: 'Отсутствует' }
+];
+
+const OPTS_YES_NO = [
+  { value: 'Y', label: 'Да' },
+  { value: 'N', label: 'Нет' }
+];
+
+const OPTS_SALARY_CARD = [
+  { value: 'sber',   label: 'Сбербанк' },
+  { value: 'other',  label: 'Другой банк' },
+  { value: 'none',   label: 'Нет' }
+];
+
+const OPTS_MARITAL = [
+  { value: 'single',   label: 'Не в браке' },
+  { value: 'married',  label: 'В браке' },
+  { value: 'divorced', label: 'Разведён/а' },
+  { value: 'widow',    label: 'Вдовец/вдова' }
+];
+
+const OPTS_CHILDREN = [
+  { value: '0', label: 'Нет' },
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3+' }
+];
+
+// ─── Инициализация формы ─────────────────────────────────────────────────────
+
 /**
  * Инициализация формы данными лида
  * @param {Object} lead — объект лида из crm.lead.get
  */
 function initForm(lead) {
-  // Авто-заполнение ФИО
-  const fio = [lead.LASTNAME, lead.NAME, lead.SECONDNAME].filter(Boolean).join(' ');
-  // TODO: рендерить поля динамически или заполнять статические
-  console.log('initForm', lead, fio);
+  const f = lead; // shorthand
+  const fio = [f.LASTNAME, f.NAME, f.SECONDNAME].filter(Boolean).join(' ');
+
+  // БЛОК 1: Финансовые данные
+  document.getElementById('finance-body').innerHTML =
+    fieldText   ('f-fio',             'ФИО клиента',          fio,                             { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
+    fieldNumber ('f-debt-total',       'Общая сумма долга, ₽', f.UF_CRM_KC_DEBT_TOTAL,          { placeholder: '0', min: 0 }) +
+    fieldNumber ('f-monthly-payment',  'Ежемесячный платёж, ₽',f.UF_CRM_KC_MONTHLY_PAYMENT,    { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-income-official',  'Официальный доход',    f.UF_CRM_KC_INCOME_OFFICIAL,     OPTS_INCOME_OFFICIAL) +
+    fieldNumber ('f-income-unofficial','Неофициальный доход, ₽',f.UF_CRM_KC_INCOME_UNOFFICIAL,  { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-salary-card',      'Зарплатная карта',     f.UF_CRM_KC_SALARY_CARD,         OPTS_SALARY_CARD);
+
+  // БЛОК 2: Кредитная история
+  document.getElementById('credit-body').innerHTML =
+    fieldText   ('f-creditors',  'Кредиторы',    f.UF_CRM_KC_CREDITORS, { colSpan: true, placeholder: 'Банки, МФО...' }) +
+    fieldSelect ('f-collateral', 'Залог',        f.UF_CRM_KC_COLLATERAL, OPTS_YES_NO) +
+    fieldText   ('f-overdue',    'Просрочки',    f.UF_CRM_KC_OVERDUE,    { placeholder: 'кол-во дней / описание' }) +
+    fieldSelect ('f-fssp',       'ФССП',         f.UF_CRM_KC_FSSP,       OPTS_YES_NO) +
+    fieldSelect ('f-property',   'Имущество',    f.UF_CRM_KC_PROPERTY,   OPTS_YES_NO) +
+    fieldSelect ('f-deals',      'Сделки',       f.UF_CRM_KC_DEALS,      OPTS_YES_NO);
+
+  // БЛОК 3: Личные данные
+  document.getElementById('personal-body').innerHTML =
+    fieldText   ('f-workplace',     'Место работы',         f.UF_CRM_KC_WORKPLACE,      { colSpan: true, placeholder: 'Наименование организации' }) +
+    fieldSelect ('f-marital',       'Семейное положение',   f.UF_CRM_KC_MARITAL_STATUS,  OPTS_MARITAL) +
+    fieldSelect ('f-children',      'Дети',                 f.UF_CRM_KC_CHILDREN,        OPTS_CHILDREN) +
+    fieldSelect ('f-joint-property','Совместное имущество',  f.UF_CRM_KC_JOINT_PROPERTY,  OPTS_YES_NO) +
+    fieldSelect ('f-criminal',      'Судимости',            f.UF_CRM_KC_CRIMINAL,        OPTS_YES_NO) +
+    fieldSelect ('f-ooo',           'ООО',                  f.UF_CRM_KC_OOO,             OPTS_YES_NO) +
+    fieldSelect ('f-ip',            'ИП',                   f.UF_CRM_KC_IP,              OPTS_YES_NO);
+
+  // БЛОК 4: Заметки менеджера
+  document.getElementById('manager-body').innerHTML =
+    fieldTextarea('f-km-exclusion', 'Исключение из КМ',  f.UF_CRM_KC_KM_EXCLUSION, { placeholder: 'Причина исключения...' }) +
+    fieldTextarea('f-main-pain',    'Основная боль',     f.UF_CRM_KC_MAIN_PAIN,    { placeholder: 'Главная проблема клиента...' }) +
+    fieldTextarea('f-objections',   'Возражения',        f.UF_CRM_KC_OBJECTIONS,   { placeholder: 'Возражения клиента...' }) +
+    fieldTextarea('f-extra-comment','Доп. комментарий',  f.UF_CRM_KC_EXTRA_COMMENT,{ placeholder: 'Дополнительная информация...' });
+
+  updateProgress();
 }
 
-/**
- * Сбор данных формы
- * @returns {Object} formData
- */
+// ─── Прогресс заполнения ─────────────────────────────────────────────────────
+
+function updateProgress() {
+  const form = document.getElementById('anketa-form');
+  if (!form) return;
+  const inputs = form.querySelectorAll('input:not([readonly]),select,textarea');
+  let filled = 0;
+  inputs.forEach(function(el) {
+    if (el.value && el.value.trim() !== '') filled++;
+  });
+  const total = inputs.length;
+  const pct   = total ? Math.round((filled / total) * 100) : 0;
+  const bar   = document.getElementById('progress-bar');
+  const lbl   = document.getElementById('progress-label');
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = filled + ' / ' + total;
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target.closest('#anketa-form')) updateProgress();
+});
+
+// ─── Сбор данных формы ───────────────────────────────────────────────────────
+
 function collectFormData() {
-  // TODO: реализовать сбор всех 23 редактируемых полей
-  return {};
+  function v(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+  return {
+    fio:               v('f-fio'),
+    debtTotal:         v('f-debt-total'),
+    monthlyPayment:    v('f-monthly-payment'),
+    incomeOfficial:    v('f-income-official'),
+    incomeUnofficial:  v('f-income-unofficial'),
+    salaryCard:        v('f-salary-card'),
+    creditors:         v('f-creditors'),
+    collateral:        v('f-collateral'),
+    overdue:           v('f-overdue'),
+    fssp:              v('f-fssp'),
+    property:          v('f-property'),
+    deals:             v('f-deals'),
+    workplace:         v('f-workplace'),
+    maritalStatus:     v('f-marital'),
+    children:          v('f-children'),
+    jointProperty:     v('f-joint-property'),
+    criminal:          v('f-criminal'),
+    ooo:               v('f-ooo'),
+    ip:                v('f-ip'),
+    kmExclusion:       v('f-km-exclusion'),
+    mainPain:          v('f-main-pain'),
+    objections:        v('f-objections'),
+    extraComment:      v('f-extra-comment')
+  };
 }
 
-/**
- * Валидация формы (вызывается на input с debounce 100мс)
- * @param {Object} formData
- * @returns {boolean}
- */
+// ─── Валидация ───────────────────────────────────────────────────────────────
+
 function validateForm(formData) {
-  // TODO: добавить правила валидации
+  // Базовая валидация — можно расширять
   return true;
 }
+
+// ─── Сохранение ──────────────────────────────────────────────────────────────
 
 /**
  * Сохранение анкеты:
@@ -82,37 +284,45 @@ function saveForm() {
   const formData = collectFormData();
   if (!validateForm(formData)) return;
 
+  const btnSave = document.getElementById('btn-save');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.textContent = 'Сохранение...';
+  }
+
   BX24.callMethod('crm.lead.update', {
     id: leadId,
     fields: {
-      UF_CRM_KC_FULLNAME:        formData.fio,
-      UF_CRM_KC_DEBT_TOTAL:      formData.debtTotal,
-      UF_CRM_KC_MONTHLY_PAYMENT: formData.monthlyPayment,
-      UF_CRM_KC_CREDITORS:       formData.creditors,
-      UF_CRM_KC_COLLATERAL:      formData.collateral,
-      UF_CRM_KC_OVERDUE:         formData.overdue,
-      UF_CRM_KC_FSSP:            formData.fssp,
-      UF_CRM_KC_PROPERTY:        formData.property,
-      UF_CRM_KC_DEALS:           formData.deals,
-      UF_CRM_KC_INCOME_OFFICIAL: formData.incomeOfficial,
-      UF_CRM_KC_SALARY_CARD:     formData.salaryCard,
+      UF_CRM_KC_FULLNAME:          formData.fio,
+      UF_CRM_KC_DEBT_TOTAL:        formData.debtTotal,
+      UF_CRM_KC_MONTHLY_PAYMENT:   formData.monthlyPayment,
+      UF_CRM_KC_INCOME_OFFICIAL:   formData.incomeOfficial,
       UF_CRM_KC_INCOME_UNOFFICIAL: formData.incomeUnofficial,
-      UF_CRM_KC_WORKPLACE:       formData.workplace,
-      UF_CRM_KC_MARITAL_STATUS:  formData.maritalStatus,
-      UF_CRM_KC_JOINT_PROPERTY:  formData.jointProperty,
-      UF_CRM_KC_CHILDREN:        formData.children,
-      UF_CRM_KC_CRIMINAL:        formData.criminal,
-      UF_CRM_KC_OOO:             formData.ooo,
-      UF_CRM_KC_IP:              formData.ip,
-      UF_CRM_KC_KM_EXCLUSION:    formData.kmExclusion,
-      UF_CRM_KC_MAIN_PAIN:       formData.mainPain,
-      UF_CRM_KC_OBJECTIONS:      formData.objections,
-      UF_CRM_KC_EXTRA_COMMENT:   formData.extraComment,
-      UF_CRM_KC_BOOKED_MANAGER:  formData.bookedManagerId,
-      UF_CRM_KC_BOOKED_TIME:     formData.bookedTime,
+      UF_CRM_KC_SALARY_CARD:       formData.salaryCard,
+      UF_CRM_KC_CREDITORS:         formData.creditors,
+      UF_CRM_KC_COLLATERAL:        formData.collateral,
+      UF_CRM_KC_OVERDUE:           formData.overdue,
+      UF_CRM_KC_FSSP:              formData.fssp,
+      UF_CRM_KC_PROPERTY:          formData.property,
+      UF_CRM_KC_DEALS:             formData.deals,
+      UF_CRM_KC_WORKPLACE:         formData.workplace,
+      UF_CRM_KC_MARITAL_STATUS:    formData.maritalStatus,
+      UF_CRM_KC_CHILDREN:          formData.children,
+      UF_CRM_KC_JOINT_PROPERTY:    formData.jointProperty,
+      UF_CRM_KC_CRIMINAL:          formData.criminal,
+      UF_CRM_KC_OOO:               formData.ooo,
+      UF_CRM_KC_IP:                formData.ip,
+      UF_CRM_KC_KM_EXCLUSION:      formData.kmExclusion,
+      UF_CRM_KC_MAIN_PAIN:         formData.mainPain,
+      UF_CRM_KC_OBJECTIONS:        formData.objections,
+      UF_CRM_KC_EXTRA_COMMENT:     formData.extraComment
     },
     params: { REGISTER_SONET_EVENT: 'N' }
   }, function (result) {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Сохранить анкету';
+    }
     if (result.error()) {
       showError('Ошибка сохранения: ' + result.error());
     } else {
@@ -123,17 +333,19 @@ function saveForm() {
 
 /**
  * Добавление комментария в таймлайн лида
- * @param {Object} formData
  */
 function addTimelineComment(formData) {
   const now = new Date();
-  const dt = now.toLocaleString('ru-RU', {
+  const dt  = now.toLocaleString('ru-RU', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
-
-  // TODO: сформировать текст комментария из formData
-  const comment = `Анкета КЦ заполнена менеджером: ${CURRENT_USERNAME} (${dt})`;
+  const comment = [
+    `Анкета КЦ заполнена: ${CURRENT_USERNAME} (${dt})`,
+    formData.debtTotal    ? `Долг: ${formData.debtTotal} ₽` : '',
+    formData.mainPain     ? `Боль: ${formData.mainPain}` : '',
+    formData.objections   ? `Возражения: ${formData.objections}` : ''
+  ].filter(Boolean).join('\n');
 
   BX24.callMethod('crm.timeline.comment.add', {
     fields: {
@@ -150,13 +362,25 @@ function addTimelineComment(formData) {
   });
 }
 
-// Навешиваем обработчик на форму
+// ─── Сброс формы ─────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', function () {
-  const form = document.getElementById('anketa-form');
+  const form  = document.getElementById('anketa-form');
+  const reset = document.getElementById('btn-reset');
+
   if (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       saveForm();
+    });
+  }
+
+  if (reset) {
+    reset.addEventListener('click', function () {
+      if (confirm('Сбросить все изменения?')) {
+        if (form) form.reset();
+        updateProgress();
+      }
     });
   }
 });
