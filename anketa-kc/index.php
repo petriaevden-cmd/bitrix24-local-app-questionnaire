@@ -7,7 +7,7 @@
  * Самописные CSS-файлы НЕ подключаются.
  *
  * Порядок блоков (синхронизирован с form.js):
- *   1. Персональные данные  (#personal-body)
+ *   1. Персональные данные  (#personal-body)  — включает поле «Город» → TZ
  *   2. Финансовые данные   (#finance-body)
  *   3. Кредитная история   (#credit-body)
  *   4. Заметки менеджера  (#manager-body)
@@ -17,7 +17,7 @@ require_once __DIR__ . '/config.php';
 
 $portalHost  = htmlspecialchars(parse_url(PORTAL_URL, PHP_URL_HOST), ENT_QUOTES);
 $salesDeptId = (int) SALES_DEPT_ID;
-$slotMin     = (int) SLOT_DURATION_MIN;  // 60
+$slotMin     = (int) SLOT_DURATION_MIN;
 $horizonDays = (int) SLOT_HORIZON_DAYS;
 $pollingMs   = (int) POLLING_INTERVAL * 1000;
 $minSlots    = (int) MIN_SLOTS_PER_DAY;
@@ -221,30 +221,8 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
         <!-- Таб: Расписание -->
         <div id="tab-schedule" role="tabpanel" class="p-3 space-y-2">
 
-          <!-- Управление: выбор МП + навигация по дням -->
-          <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 space-y-2">
-
-            <!-- Выбор МП -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Менеджер продаж</label>
-              <select id="mp-select"
-                      class="block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                <option value="">— выберите МП —</option>
-                <option value="MP1Vstrechi">МП 1 — Сергей Хватов</option>
-                <option value="MP2Vstrechi">МП 2 — Мария Прокопьева</option>
-                <option value="MP3Vstrechi">МП 3 — Ефим Костылев</option>
-                <option value="MP4Vstrechi">МП 4 — Виктория Григорьева</option>
-                <option value="MP5Vstrechi">МП 5 — Джульетта Мурадян</option>
-                <option value="MP6Vstrechi">МП 6 — Виталий Андреев</option>
-                <option value="MP7Vstrechi">МП 7 — Виталий Прилепин</option>
-                <option value="MP8Vstrechi">МП 8 — Каролина Гнездилова</option>
-                <option value="MP9Vstrechi">МП 9 — Сергей Хватов</option>
-                <option value="MP10Vstrechi">МП 10 — Анна Радаева</option>
-                <option value="MP11Vstrechi">МП 11 — Виктория Владимирова</option>
-              </select>
-            </div>
-
-            <!-- Навигация по дням -->
+          <!-- Навигация по дням -->
+          <div class="bg-white border border-gray-200 rounded-lg px-3 py-2">
             <div class="flex items-center justify-between gap-2">
               <button id="btn-day-prev" type="button"
                       class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-100 transition-colors">
@@ -258,13 +236,10 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               </button>
             </div>
-
           </div>
 
           <!-- Слоты -->
-          <div id="slots-panel" class="space-y-1">
-            <p class="text-xs text-gray-400 text-center py-4">Выберите МП для просмотра расписания</p>
-          </div>
+          <div id="slots-panel" class="space-y-1"></div>
 
           <!-- Статус бронирования -->
           <div id="booking-status" class="hidden"></div>

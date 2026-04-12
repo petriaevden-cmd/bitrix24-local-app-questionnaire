@@ -3,52 +3,50 @@
  * Рендер полей через Tailwind CSS 4 + Flowbite,
  * валидация, сбор данных, сохранение в CRM + таймлайн.
  *
- * Поля анкеты (26 UF_CRM_KC_* полей):
+ * Поля анкеты (27 UF_CRM_KC_* полей):
  *
  * БЛОК 1 — Персональные данные:
  *   1.  KC_FULLNAME           (string)      — ФИО (авто из лида)
- *   2.  KC_WORKPLACE          (string)      — Место работы
- *   3.  KC_MARITAL_STATUS     (enumeration) — Семейное положение
- *   4.  KC_CHILDREN           (enumeration) — Дети
- *   5.  KC_JOINT_PROPERTY     (enumeration) — Совместное имущество
- *   6.  KC_CRIMINAL           (enumeration) — Судимости
- *   7.  KC_OOO                (enumeration) — ООО
- *   8.  KC_IP                 (enumeration) — ИП
+ *   2.  KC_CLIENT_CITY        (string)      — Город клиента (→ TZ для расписания)
+ *   3.  KC_WORKPLACE          (string)      — Место работы
+ *   4.  KC_MARITAL_STATUS     (enumeration) — Семейное положение
+ *   5.  KC_CHILDREN           (enumeration) — Дети
+ *   6.  KC_JOINT_PROPERTY     (enumeration) — Совместное имущество
+ *   7.  KC_CRIMINAL           (enumeration) — Судимости
+ *   8.  KC_OOO                (enumeration) — ООО
+ *   9.  KC_IP                 (enumeration) — ИП
  *
  * БЛОК 2 — Финансовые данные:
- *   9.  KC_DEBT_TOTAL         (integer)     — Общая сумма долга
- *   10. KC_MONTHLY_PAYMENT    (integer)     — Ежемесячный платёж
- *   11. KC_INCOME_OFFICIAL    (enumeration) — Официальный доход
- *   12. KC_INCOME_UNOFFICIAL  (integer)     — Неофициальный доход
- *   13. KC_SALARY_CARD        (enumeration) — Зарплатная карта
+ *   10. KC_DEBT_TOTAL         (integer)     — Общая сумма долга
+ *   11. KC_MONTHLY_PAYMENT    (integer)     — Ежемесячный платёж
+ *   12. KC_INCOME_OFFICIAL    (enumeration) — Официальный доход
+ *   13. KC_INCOME_UNOFFICIAL  (integer)     — Неофициальный доход
+ *   14. KC_SALARY_CARD        (enumeration) — Зарплатная карта
  *
  * БЛОК 3 — Кредитная история:
- *   14. KC_CREDITORS          (string)      — Кредиторы
- *   15. KC_COLLATERAL         (enumeration) — Залог
- *   16. KC_OVERDUE            (string)      — Просрочки
- *   17. KC_FSSP               (enumeration) — ФССП
- *   18. KC_PROPERTY           (enumeration) — Имущество
- *   19. KC_DEALS              (enumeration) — Сделки
+ *   15. KC_CREDITORS          (string)      — Кредиторы
+ *   16. KC_COLLATERAL         (enumeration) — Залог
+ *   17. KC_OVERDUE            (string)      — Просрочки
+ *   18. KC_FSSP               (enumeration) — ФССП
+ *   19. KC_PROPERTY           (enumeration) — Имущество
+ *   20. KC_DEALS              (enumeration) — Сделки
  *
  * БЛОК 4 — Заметки менеджера:
- *   20. KC_KM_EXCLUSION       (string)      — Исключение из КМ
- *   21. KC_MAIN_PAIN          (string)      — Основная боль
- *   22. KC_OBJECTIONS         (string)      — Возражения
- *   23. KC_EXTRA_COMMENT      (string)      — Доп. комментарий
+ *   21. KC_KM_EXCLUSION       (string)      — Исключение из КМ
+ *   22. KC_MAIN_PAIN          (string)      — Основная боль
+ *   23. KC_OBJECTIONS         (string)      — Возражения
+ *   24. KC_EXTRA_COMMENT      (string)      — Доп. комментарий
  *
  * БЛОК 5 — Запись:
- *   24. KC_BOOKED_MANAGER     (employee)    — ID менеджера
- *   25. KC_BOOKED_TIME        (datetime)    — Время записи
- *   26. KC_BOOKED_EVENT_ID    (integer)     — ID события календаря
+ *   25. KC_BOOKED_MANAGER     (employee)    — ID менеджера
+ *   26. KC_BOOKED_TIME        (datetime)    — Время записи
+ *   27. KC_BOOKED_EVENT_ID    (integer)     — ID события календаря
  */
 
 'use strict';
 
 // ─── Вспомогательные функции рендера (Tailwind + Flowbite) ───────────────────
 
-/**
- * Текстовое поле
- */
 function fieldText(id, label, value, opts) {
   opts = opts || {};
   return `
@@ -66,9 +64,6 @@ function fieldText(id, label, value, opts) {
     </div>`;
 }
 
-/**
- * Числовое поле
- */
 function fieldNumber(id, label, value, opts) {
   opts = opts || {};
   return `
@@ -84,9 +79,6 @@ function fieldNumber(id, label, value, opts) {
     </div>`;
 }
 
-/**
- * Select (enumeration)
- */
 function fieldSelect(id, label, value, options, opts) {
   opts = opts || {};
   const optHtml = options.map(function(o) {
@@ -105,9 +97,6 @@ function fieldSelect(id, label, value, options, opts) {
     </div>`;
 }
 
-/**
- * Textarea
- */
 function fieldTextarea(id, label, value, opts) {
   opts = opts || {};
   return `
@@ -117,6 +106,37 @@ function fieldTextarea(id, label, value, opts) {
                 ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
                        focus:ring-blue-500 focus:border-blue-500 block w-full p-2 resize-none">${escHtml(value || '')}</textarea>
+    </div>`;
+}
+
+/**
+ * Select города с datalist — позволяет и выбрать из списка, и ввести вручную.
+ * После изменения вызывает setClientCity() из calendar.js.
+ */
+function fieldCity(id, label, value) {
+  const CITIES = [
+    'Москва','Санкт-Петербург','Новосибирск','Екатеринбург','Казань',
+    'Нижний Новгород','Красноярск','Самара','Уфа','Ростов-на-Дону',
+    'Омск','Краснодар','Воронеж','Пермь','Волгоград','Тюмень',
+    'Иркутск','Владивосток','Хабаровск','Якутск','Магадан','Чита',
+    'Сочи','Барнаул','Томск','Оренбург','Рязань','Ярославль',
+    'Ижевск','Севастополь'
+  ];
+  const opts = CITIES.map(function(c) {
+    return '<option value="' + escHtml(c) + '">';
+  }).join('');
+  return `
+    <div class="flex flex-col gap-1">
+      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}
+        <span class="text-blue-400 font-normal ml-1" title="Используется для определения часового пояса в расписании">→ TZ</span>
+      </label>
+      <input id="${id}" name="${id}" type="text" list="city-list"
+             value="${escHtml(value || '')}"
+             placeholder="Начните вводить город..."
+             autocomplete="off"
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+      <datalist id="city-list">${opts}</datalist>
     </div>`;
 }
 
@@ -164,48 +184,56 @@ const OPTS_CHILDREN = [
 
 // ─── Инициализация формы ─────────────────────────────────────────────────────
 
-/**
- * Инициализация формы данными лида
- * @param {Object} lead — объект лида из crm.lead.get
- */
 function initForm(lead) {
-  const f = lead; // shorthand
+  const f   = lead;
   const fio = [f.LASTNAME, f.NAME, f.SECONDNAME].filter(Boolean).join(' ');
 
-  // БЛОК 1: Персональные данные
+  // БЛОК 1: Персональные данные (+ город → TZ)
   document.getElementById('personal-body').innerHTML =
-    fieldText   ('f-fio',           'ФИО клиента',          fio,                            { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
-    fieldText   ('f-workplace',     'Место работы',         f.UF_CRM_KC_WORKPLACE,          { colSpan: true, placeholder: 'Наименование организации' }) +
-    fieldSelect ('f-marital',       'Семейное положение',   f.UF_CRM_KC_MARITAL_STATUS,     OPTS_MARITAL) +
-    fieldSelect ('f-children',      'Дети',                 f.UF_CRM_KC_CHILDREN,           OPTS_CHILDREN) +
-    fieldSelect ('f-joint-property','Совместное имущество',  f.UF_CRM_KC_JOINT_PROPERTY,     OPTS_YES_NO) +
-    fieldSelect ('f-criminal',      'Судимости',            f.UF_CRM_KC_CRIMINAL,           OPTS_YES_NO) +
-    fieldSelect ('f-ooo',           'ООО',                  f.UF_CRM_KC_OOO,                OPTS_YES_NO) +
-    fieldSelect ('f-ip',            'ИП',                   f.UF_CRM_KC_IP,                 OPTS_YES_NO);
+    fieldText   ('f-fio',            'ФИО клиента',         fio,                           { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
+    fieldCity   ('f-UF_CRM_KC_CLIENT_CITY', 'Город клиента', f.UF_CRM_KC_CLIENT_CITY) +
+    fieldText   ('f-workplace',      'Место работы',        f.UF_CRM_KC_WORKPLACE,         { placeholder: 'Наименование организации' }) +
+    fieldSelect ('f-marital',        'Семейное положение',  f.UF_CRM_KC_MARITAL_STATUS,    OPTS_MARITAL) +
+    fieldSelect ('f-children',       'Дети',                f.UF_CRM_KC_CHILDREN,          OPTS_CHILDREN) +
+    fieldSelect ('f-joint-property', 'Совместное имущество', f.UF_CRM_KC_JOINT_PROPERTY,   OPTS_YES_NO) +
+    fieldSelect ('f-criminal',       'Судимости',           f.UF_CRM_KC_CRIMINAL,          OPTS_YES_NO) +
+    fieldSelect ('f-ooo',            'ООО',                 f.UF_CRM_KC_OOO,               OPTS_YES_NO) +
+    fieldSelect ('f-ip',             'ИП',                  f.UF_CRM_KC_IP,                OPTS_YES_NO);
+
+  // Обработчик поля города — обновляет TZ в расписании сразу при вводе
+  const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
+  if (cityEl) {
+    cityEl.addEventListener('change', function () {
+      if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
+    });
+    cityEl.addEventListener('input', function () {
+      if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
+    });
+  }
 
   // БЛОК 2: Финансовые данные
   document.getElementById('finance-body').innerHTML =
-    fieldNumber ('f-debt-total',       'Общая сумма долга, ₽',  f.UF_CRM_KC_DEBT_TOTAL,         { placeholder: '0', min: 0 }) +
-    fieldNumber ('f-monthly-payment',  'Ежемесячный платёж, ₽', f.UF_CRM_KC_MONTHLY_PAYMENT,    { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-income-official',  'Официальный доход',     f.UF_CRM_KC_INCOME_OFFICIAL,    OPTS_INCOME_OFFICIAL) +
-    fieldNumber ('f-income-unofficial','Неофициальный доход, ₽', f.UF_CRM_KC_INCOME_UNOFFICIAL,  { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-salary-card',      'Зарплатная карта',      f.UF_CRM_KC_SALARY_CARD,        OPTS_SALARY_CARD);
+    fieldNumber ('f-debt-total',        'Общая сумма долга, ₽',   f.UF_CRM_KC_DEBT_TOTAL,        { placeholder: '0', min: 0 }) +
+    fieldNumber ('f-monthly-payment',   'Ежемесячный платёж, ₽',  f.UF_CRM_KC_MONTHLY_PAYMENT,   { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-income-official',   'Официальный доход',      f.UF_CRM_KC_INCOME_OFFICIAL,   OPTS_INCOME_OFFICIAL) +
+    fieldNumber ('f-income-unofficial', 'Неофициальный доход, ₽', f.UF_CRM_KC_INCOME_UNOFFICIAL, { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-salary-card',       'Зарплатная карта',       f.UF_CRM_KC_SALARY_CARD,       OPTS_SALARY_CARD);
 
   // БЛОК 3: Кредитная история
   document.getElementById('credit-body').innerHTML =
-    fieldText   ('f-creditors',  'Кредиторы',    f.UF_CRM_KC_CREDITORS, { colSpan: true, placeholder: 'Банки, МФО...' }) +
-    fieldSelect ('f-collateral', 'Залог',        f.UF_CRM_KC_COLLATERAL, OPTS_YES_NO) +
-    fieldText   ('f-overdue',    'Просрочки',    f.UF_CRM_KC_OVERDUE,    { placeholder: 'кол-во дней / описание' }) +
-    fieldSelect ('f-fssp',       'ФССП',         f.UF_CRM_KC_FSSP,       OPTS_YES_NO) +
-    fieldSelect ('f-property',   'Имущество',    f.UF_CRM_KC_PROPERTY,   OPTS_YES_NO) +
-    fieldSelect ('f-deals',      'Сделки',       f.UF_CRM_KC_DEALS,      OPTS_YES_NO);
+    fieldText   ('f-creditors',  'Кредиторы',  f.UF_CRM_KC_CREDITORS,  { colSpan: true, placeholder: 'Банки, МФО...' }) +
+    fieldSelect ('f-collateral', 'Залог',      f.UF_CRM_KC_COLLATERAL, OPTS_YES_NO) +
+    fieldText   ('f-overdue',    'Просрочки',  f.UF_CRM_KC_OVERDUE,    { placeholder: 'кол-во дней / описание' }) +
+    fieldSelect ('f-fssp',       'ФССП',       f.UF_CRM_KC_FSSP,       OPTS_YES_NO) +
+    fieldSelect ('f-property',   'Имущество',  f.UF_CRM_KC_PROPERTY,   OPTS_YES_NO) +
+    fieldSelect ('f-deals',      'Сделки',     f.UF_CRM_KC_DEALS,      OPTS_YES_NO);
 
   // БЛОК 4: Заметки менеджера
   document.getElementById('manager-body').innerHTML =
-    fieldTextarea('f-km-exclusion', 'Исключение из КМ',  f.UF_CRM_KC_KM_EXCLUSION, { placeholder: 'Причина исключения...' }) +
-    fieldTextarea('f-main-pain',    'Основная боль',     f.UF_CRM_KC_MAIN_PAIN,    { placeholder: 'Главная проблема клиента...' }) +
-    fieldTextarea('f-objections',   'Возражения',        f.UF_CRM_KC_OBJECTIONS,   { placeholder: 'Возражения клиента...' }) +
-    fieldTextarea('f-extra-comment','Доп. комментарий',  f.UF_CRM_KC_EXTRA_COMMENT,{ placeholder: 'Дополнительная информация...' });
+    fieldTextarea('f-km-exclusion',  'Исключение из КМ', f.UF_CRM_KC_KM_EXCLUSION,  { placeholder: 'Причина исключения...' }) +
+    fieldTextarea('f-main-pain',     'Основная боль',    f.UF_CRM_KC_MAIN_PAIN,     { placeholder: 'Главная проблема клиента...' }) +
+    fieldTextarea('f-objections',    'Возражения',       f.UF_CRM_KC_OBJECTIONS,    { placeholder: 'Возражения клиента...' }) +
+    fieldTextarea('f-extra-comment', 'Доп. комментарий', f.UF_CRM_KC_EXTRA_COMMENT, { placeholder: 'Дополнительная информация...' });
 
   updateProgress();
 }
@@ -241,6 +269,7 @@ function collectFormData() {
   }
   return {
     fio:               v('f-fio'),
+    clientCity:        v('f-UF_CRM_KC_CLIENT_CITY'),
     workplace:         v('f-workplace'),
     maritalStatus:     v('f-marital'),
     children:          v('f-children'),
@@ -269,17 +298,12 @@ function collectFormData() {
 // ─── Валидация ───────────────────────────────────────────────────────────────
 
 function validateForm(formData) {
-  // Базовая валидация — можно расширять
+  // Можно расширять — базовая валидация оставлена открытой
   return true;
 }
 
 // ─── Сохранение ──────────────────────────────────────────────────────────────
 
-/**
- * Сохранение анкеты:
- * 1. crm.lead.update — обновляем UF-поля
- * 2. crm.timeline.comment.add — дублируем в таймлайн
- */
 function saveForm() {
   const formData = collectFormData();
   if (!validateForm(formData)) return;
@@ -294,6 +318,7 @@ function saveForm() {
     id: leadId,
     fields: {
       UF_CRM_KC_FULLNAME:          formData.fio,
+      UF_CRM_KC_CLIENT_CITY:       formData.clientCity,
       UF_CRM_KC_WORKPLACE:         formData.workplace,
       UF_CRM_KC_MARITAL_STATUS:    formData.maritalStatus,
       UF_CRM_KC_CHILDREN:          formData.children,
@@ -321,7 +346,9 @@ function saveForm() {
   }, function (result) {
     if (btnSave) {
       btnSave.disabled = false;
-      btnSave.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Сохранить анкету';
+      btnSave.innerHTML =
+        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Сохранить анкету';
     }
     if (result.error()) {
       showError('Ошибка сохранения: ' + result.error());
@@ -331,9 +358,6 @@ function saveForm() {
   });
 }
 
-/**
- * Добавление комментария в таймлайн лида
- */
 function addTimelineComment(formData) {
   const now = new Date();
   const dt  = now.toLocaleString('ru-RU', {
@@ -341,10 +365,11 @@ function addTimelineComment(formData) {
     hour: '2-digit', minute: '2-digit'
   });
   const comment = [
-    `Анкета КЦ заполнена: ${CURRENT_USERNAME} (${dt})`,
-    formData.debtTotal    ? `Долг: ${formData.debtTotal} ₽` : '',
-    formData.mainPain     ? `Боль: ${formData.mainPain}` : '',
-    formData.objections   ? `Возражения: ${formData.objections}` : ''
+    'Анкета КЦ заполнена: ' + CURRENT_USERNAME + ' (' + dt + ')',
+    formData.clientCity   ? 'Город: ' + formData.clientCity          : '',
+    formData.debtTotal    ? 'Долг: '  + formData.debtTotal + ' ₽'   : '',
+    formData.mainPain     ? 'Боль: '  + formData.mainPain             : '',
+    formData.objections   ? 'Возражения: ' + formData.objections      : ''
   ].filter(Boolean).join('\n');
 
   BX24.callMethod('crm.timeline.comment.add', {

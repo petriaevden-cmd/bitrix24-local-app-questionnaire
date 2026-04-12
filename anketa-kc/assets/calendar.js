@@ -18,7 +18,7 @@ const MP_CALENDARS = {
   MP7Vstrechi:  { label: 'Виталий Прилепин',      short: 'МП 7',  utc: 3, from: 9,  to: 18 },
   MP8Vstrechi:  { label: 'Каролина Гнездилова',   short: 'МП 8',  utc: 3, from: 9,  to: 19 },
   MP9Vstrechi:  { label: 'Сергей Хватов',         short: 'МП 9',  utc: 3, from: 9,  to: 18 },
-  MP10Vstrechi: { label: 'Анна Радаева',          short: 'МП 10', utc: 3, from: 9,  to: 18 }, // UTC не уточнён, дефолт +3
+  MP10Vstrechi: { label: 'Анна Радаева',          short: 'МП 10', utc: 3, from: 9,  to: 18 },
   MP11Vstrechi: { label: 'Виктория Владимирова',  short: 'МП 11', utc: 3, from: 9,  to: 18 }
 };
 
@@ -42,11 +42,12 @@ let _clientUtc     = null;
 let _autoJumpCount = 0;
 const MAX_AUTO_JUMP = 14;
 
-// Кеш занятости: calId → массив busy-событий для текущего дня
-let _busyCache = {};
-// Флаги загрузки
-let _loadedCount  = 0;
-let _totalToLoad  = 0;
+let _busyCache   = {};
+let _loadedCount = 0;
+let _totalToLoad = 0;
+
+// Флаг: идёт ли сейчас бронирование (защита от двойного клика)
+let _bookingInProgress = false;
 
 // ── Инициализация ────────────────────────────────────────────────────────────
 function initCalendar() {
@@ -106,10 +107,10 @@ function getClientUtcFromForm() {
 
 // ── Загрузка всех МП за день ─────────────────────────────────────────────────
 function loadAllSlots() {
-  _clientUtc    = getClientUtcFromForm();
-  _busyCache    = {};
-  _loadedCount  = 0;
-  _totalToLoad  = Object.keys(MP_CALENDARS).length;
+  _clientUtc   = getClientUtcFromForm();
+  _busyCache   = {};
+  _loadedCount = 0;
+  _totalToLoad = Object.keys(MP_CALENDARS).length;
 
   const dateEl = document.getElementById('schedule-date');
   if (dateEl) dateEl.textContent = fmtDate(_currentDay);
@@ -374,7 +375,16 @@ function selectSlot(calId, slot) {
         'Подтвердить запись</button>' +
       '</div>';
     const confirmBtn = document.getElementById('btn-book-confirm');
-    if (confirmBtn) confirmBtn.addEventListener('click', function () { bookSlot(calId, slot); });
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function () {
+        // fix 4.A: защита от двойного бронирования
+        if (_bookingInProgress) return;
+        _bookingInProgress = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Запись...';
+        bookSlot(calId, slot);
+      });
+    }
   }
   setHiddenField('UF_CRM_KC_BOOKED_MANAGER', calId);
   setHiddenField('UF_CRM_KC_BOOKED_TIME', new Date(slot.utcMs).toISOString());
@@ -382,8 +392,11 @@ function selectSlot(calId, slot) {
 
 // ── Бронирование ──────────────────────────────────────────────────────────────
 function bookSlot(calId, slot) {
-  if (typeof leadId === 'undefined') return;
-  const fio = (document.getElementById('f-UF_CRM_KC_FULLNAME') || {}).value || 'Клиент';
+  if (typeof leadId === 'undefined') {
+    _bookingInProgress = false;
+    return;
+  }
+  const fio = (document.getElementById('f-fio') || {}).value || 'Клиент';
   const mp  = MP_CALENDARS[calId] || {};
 
   BX24.callMethod('calendar.event.add', {
@@ -397,7 +410,22 @@ function bookSlot(calId, slot) {
     importance:    'normal',
     color:         '#2563EB'
   }, function (result) {
-    if (result.error()) { showError('Ошибка бронирования: ' + result.error()); return; }
+    _bookingInProgress = false;
+
+    if (result.error()) {
+      showError('Ошибка бронирования: ' + result.error());
+      // fix 4.B: восстанавливаем кнопку чтобы можно было повторить
+      const confirmBtn = document.getElementById('btn-book-confirm');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML =
+          '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' +
+          ' Повторить';
+      }
+      return;
+    }
+
     const eventId = result.data();
     saveBookingToLead(calId, fmtBxUTC(slot.utcMs), eventId);
     notifyMpByCalId(calId, slot, fio);
