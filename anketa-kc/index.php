@@ -119,53 +119,53 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
         </div>
       </div>
 
-      <!-- Форма: блоки расположены ГОРИЗОНТАЛЬНО, горизонтальный скролл -->
-      <form id="anketa-form" class="hidden flex-1 overflow-x-auto overflow-y-hidden" novalidate>
-        <div class="flex flex-row gap-3 px-4 py-3 h-full" style="min-width: max-content;">
+      <!-- Форма: блоки сложены ВЕРТИКАЛЬНО, вертикальный скролл, каждый блок на всю ширину -->
+      <form id="anketa-form" class="hidden flex-1 overflow-y-auto overflow-x-hidden" novalidate>
+        <div class="flex flex-col gap-3 px-4 py-3">
 
           <!-- Блок 1: Персональные данные -->
-          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">1</span>
               <span class="text-xs font-semibold text-gray-700">Персональные</span>
             </div>
-            <div id="personal-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+            <div id="personal-body" class="px-3 py-3 flex flex-col gap-2 text-xs"></div>
           </div>
 
           <!-- Блок 2: Финансовые данные -->
-          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">2</span>
               <span class="text-xs font-semibold text-gray-700">Финансы</span>
             </div>
-            <div id="finance-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+            <div id="finance-body" class="px-3 py-3 flex flex-col gap-2 text-xs"></div>
           </div>
 
           <!-- Блок 3: Кредитная история -->
-          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:200px; min-width:200px;">
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">3</span>
               <span class="text-xs font-semibold text-gray-700">Кредитная</span>
             </div>
-            <div id="credit-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+            <div id="credit-body" class="px-3 py-3 flex flex-col gap-2 text-xs"></div>
           </div>
 
           <!-- Блок 4: Заметки менеджера -->
-          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">4</span>
               <span class="text-xs font-semibold text-gray-700">Заметки</span>
             </div>
-            <div id="manager-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+            <div id="manager-body" class="px-3 py-3 flex flex-col gap-2 text-xs"></div>
           </div>
 
           <!-- Блок 5: Запись на встречу -->
-          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:200px; min-width:200px;">
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
               <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold shrink-0">5</span>
               <span class="text-xs font-semibold text-gray-700">Запись</span>
             </div>
-            <div id="booking-body" class="px-3 py-3 text-xs text-gray-400 overflow-y-auto flex-1">
+            <div id="booking-body" class="px-3 py-3 text-xs text-gray-400">
               <span class="inline-flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 Выберите слот справа →

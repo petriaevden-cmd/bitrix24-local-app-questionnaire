@@ -270,25 +270,38 @@ function renderTable() {
   table.className = 'w-full text-xs border-collapse';
 
   // ── THEAD ─────────────────────────────────────────────────────────────────
-  // Заголовок колонки = время клиента (или UTC если город не указан).
+  // Строка 1: время клиента (синиее) — или UTC если город не указан.
   // Кнопка в строке МП показывает время этого МП.
   const thead  = document.createElement('thead');
-  const trHead = document.createElement('tr');
 
+  // Подпись над таблицей: поясняем логику двух времён
+  const trCaption = document.createElement('tr');
+  const thCaption = document.createElement('th');
+  thCaption.colSpan = allHours.length + 1;
+  thCaption.className = 'px-3 pt-2 pb-1 text-left border-b border-gray-100 bg-gray-50';
+  thCaption.innerHTML = hasClientTz
+    ? '<span class="text-[11px] text-gray-500">' +
+      '<span class="inline-block w-2.5 h-2.5 rounded-sm bg-blue-100 border border-blue-300 align-middle mr-1"></span>' +
+      'Заголовок колонки — <strong class="text-blue-600">время клиента</strong> (UTC+' + _clientUtc + ')' +
+      '&ensp;·&ensp;' +
+      '<span class="inline-block w-2.5 h-2.5 rounded-sm bg-green-50 border border-green-300 align-middle mr-1"></span>' +
+      'Кнопка в строке — <strong class="text-green-700">время МП</strong>' +
+      '</span>'
+    : '<span class="text-[11px] text-gray-400">Заголовок колонки — UTC · Кнопка в строке — время МП</span>';
+  trCaption.appendChild(thCaption);
+  thead.appendChild(trCaption);
+
+  const trHead = document.createElement('tr');
   const thCorner = document.createElement('th');
   thCorner.className = 'sticky left-0 z-10 bg-gray-50 text-left py-2 px-3 font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap min-w-[64px]';
-  // Подпись угловой ячейки — указываем чьё время в заголовке
-  thCorner.innerHTML = hasClientTz
-    ? 'МП<div class="text-[10px] font-normal text-blue-400 leading-tight mt-0.5">UTC+' + _clientUtc + '</div>'
-    : 'МП<div class="text-[10px] font-normal text-gray-400 leading-tight mt-0.5">UTC</div>';
+  thCorner.textContent = 'МП';
   trHead.appendChild(thCorner);
 
   allHours.forEach(function (col) {
     const th = document.createElement('th');
-    th.className = 'py-2 px-2 font-semibold border-b border-gray-200 text-center whitespace-nowrap min-w-[72px]';
-    // col.label уже содержит время клиента (или UTC) — одно значение
+    th.className = 'py-2 px-2 font-semibold border-b border-gray-200 text-center whitespace-nowrap min-w-[72px] bg-blue-50';
     th.innerHTML = hasClientTz
-      ? '<span class="font-mono text-blue-600">' + escHtml(col.label) + '</span>'
+      ? '<span class="font-mono text-blue-700">' + escHtml(col.label) + '</span>'
       : '<span class="font-mono text-gray-600">' + escHtml(col.label) + '</span>';
     trHead.appendChild(th);
   });
@@ -324,18 +337,23 @@ function renderTable() {
 
       if (slot) {
         const btn = document.createElement('button');
-        btn.type      = 'button';
+        btn.type = 'button';
+        // Дата-атрибуты для выделения выбранного слота
+        btn.dataset.calId  = calId;
+        btn.dataset.utcMs  = slot.utcMs;
         btn.className =
-          'w-full rounded-md bg-green-50 border border-green-200 text-green-700 ' +
+          'slot-btn w-full rounded-md bg-green-50 border border-green-200 text-green-700 ' +
           'text-[11px] font-medium px-1.5 py-1 hover:bg-green-600 hover:text-white hover:border-green-600 ' +
           'transition-colors whitespace-nowrap tabular-nums';
         const mpTime = fmtHour(slot.utcMs, mp.utc);
         btn.textContent = mpTime;
-        // Подсказка: время МП + время клиента если известен
         btn.title = hasClientTz
           ? 'Время МП: ' + mpTime + ' (UTC+' + mp.utc + ')\nВремя клиента: ' + fmtHour(slot.utcMs, _clientUtc) + ' (UTC+' + _clientUtc + ')'
           : 'Записать на ' + mpTime + ' (UTC+' + mp.utc + ')';
-        btn.addEventListener('click', function () { selectSlot(calId, slot); });
+        btn.addEventListener('click', function () {
+          _highlightSelectedSlot(calId, slot.utcMs);
+          selectSlot(calId, slot);
+        });
         td.appendChild(btn);
       } else {
         const inWorkHours = (function () {
@@ -496,6 +514,43 @@ function notifyMpByCalId(calId, slot, leadName) {
                    fmtHour(slot.utcMs, mp.utc) + ' UTC+' + mp.utc + '. Клиент: ' + leadName
     }
   }, function () {});
+}
+
+// ── Выделение выбранного слота ───────────────────────────────────────────────
+/**
+ * Снимает выделение со всех кнопок-слотов и выделяет нажатую.
+ * Вызывается из обработчика клика кнопки ДО selectSlot().
+ */
+function _highlightSelectedSlot(calId, utcMs) {
+  // Снимаем класс со всех кнопок-слотов
+  var panel = document.getElementById('slots-panel');
+  if (panel) {
+    var allBtns = panel.querySelectorAll('.slot-btn');
+    for (var i = 0; i < allBtns.length; i++) {
+      allBtns[i].classList.remove(
+        'slot-btn-selected',
+        'bg-blue-600', 'border-blue-700', 'text-white',
+        'bg-green-50', 'border-green-200', 'text-green-700'
+      );
+      allBtns[i].classList.add(
+        'bg-green-50', 'border-green-200', 'text-green-700'
+      );
+    }
+  }
+  // Находим и выделяем нажатую кнопку
+  var selectedBtn = panel
+    ? panel.querySelector(
+        '.slot-btn[data-cal-id="' + calId + '"][data-utc-ms="' + utcMs + '"]'
+      )
+    : null;
+  if (selectedBtn) {
+    selectedBtn.classList.remove(
+      'bg-green-50', 'border-green-200', 'text-green-700'
+    );
+    selectedBtn.classList.add(
+      'slot-btn-selected', 'bg-blue-600', 'border-blue-700', 'text-white'
+    );
+  }
 }
 
 // ── Публичный API для form.js ─────────────────────────────────────────────────
