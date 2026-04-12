@@ -4,13 +4,16 @@
  * 1. BX24.init → получаем leadId из placement
  * 2. batch: crm.lead.get + user.current
  * 3. Заполняем шапку: имя текущего пользователя + заголовок лида
- * 4. Запускаем form.js (initForm) и calendar.js (initCalendar)
+ * 4. initForm(lead)     — рендер полей, в т.ч. KC_CLIENT_CITY
+ * 5. setClientCity()    — fix 3.B: передаём город из лида в calendar до initCalendar
+ * 6. initCalendar()     — теперь _clientUtc уже установлен корректно
+ * 7. startPolling()
  */
 
 'use strict';
 
-let leadId          = null;
-let currentUser     = null;
+let leadId           = null;
+let currentUser      = null;
 let CURRENT_USERNAME = '';
 
 BX24.init(function () {
@@ -60,10 +63,20 @@ BX24.init(function () {
         form.classList.add('flex');
       }
 
-      // Инициализация модулей
-      if (typeof initForm     === 'function') initForm(lead);
-      if (typeof initCalendar === 'function') initCalendar();
-      if (typeof startPolling === 'function') startPolling();
+      // ── Порядок инициализации важен ──────────────────────────────────────
+      // 1. Сначала рендерим форму — поле f-UF_CRM_KC_CLIENT_CITY появляется в DOM
+      if (typeof initForm === 'function') initForm(lead);
+
+      // 2. fix 3.B: передаём город из лида в calendar ДО initCalendar.
+      //    Если город сохранён в лиде — _clientUtc будет установлен сразу,
+      //    и первый рендер таблицы уже покажет время клиента.
+      if (typeof setClientCity === 'function') {
+        setClientCity((lead.UF_CRM_KC_CLIENT_CITY || '').trim());
+      }
+
+      // 3. Теперь инициализируем календарь — _clientUtc уже не null (если город есть)
+      if (typeof initCalendar  === 'function') initCalendar();
+      if (typeof startPolling  === 'function') startPolling();
     }
   );
 });
@@ -89,7 +102,7 @@ function showSuccess() {
   el.classList.remove('hidden');
   el.classList.add('flex');
 
-  const now    = new Date();
+  const now     = new Date();
   const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   const status = document.getElementById('save-status');

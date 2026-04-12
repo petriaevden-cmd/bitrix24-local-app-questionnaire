@@ -7,7 +7,7 @@
  *
  * БЛОК 1 — Персональные данные:
  *   1.  KC_FULLNAME           (string)      — ФИО (авто из лида)
- *   2.  KC_CLIENT_CITY        (string)      — Город клиента (→ TZ для расписания)
+ *   2.  KC_CLIENT_CITY        (string)      — Город клиента (→ TZ для расписания) [REQUIRED]
  *   3.  KC_WORKPLACE          (string)      — Место работы
  *   4.  KC_MARITAL_STATUS     (enumeration) — Семейное положение
  *   5.  KC_CHILDREN           (enumeration) — Дети
@@ -110,7 +110,7 @@ function fieldTextarea(id, label, value, opts) {
 }
 
 /**
- * Select города с datalist — позволяет и выбрать из списка, и ввести вручную.
+ * fix 2.C: поле города — обязательное (required), визуально помечено звёздочкой.
  * После изменения вызывает setClientCity() из calendar.js.
  */
 function fieldCity(id, label, value) {
@@ -127,16 +127,20 @@ function fieldCity(id, label, value) {
   }).join('');
   return `
     <div class="flex flex-col gap-1">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}
+      <label for="${id}" class="block text-xs font-medium text-gray-500">
+        ${label}
+        <span class="text-red-500 ml-0.5" title="Обязательное поле">*</span>
         <span class="text-blue-400 font-normal ml-1" title="Используется для определения часового пояса в расписании">→ TZ</span>
       </label>
       <input id="${id}" name="${id}" type="text" list="city-list"
              value="${escHtml(value || '')}"
              placeholder="Начните вводить город..."
              autocomplete="off"
+             required
              class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
                     focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
       <datalist id="city-list">${opts}</datalist>
+      <p id="${id}-error" class="hidden text-xs text-red-500 mt-0.5">Укажите город клиента</p>
     </div>`;
 }
 
@@ -204,9 +208,11 @@ function initForm(lead) {
   const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
   if (cityEl) {
     cityEl.addEventListener('change', function () {
+      clearCityError();
       if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
     });
     cityEl.addEventListener('input', function () {
+      clearCityError();
       if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
     });
   }
@@ -260,6 +266,22 @@ document.addEventListener('change', function(e) {
   if (e.target.closest('#anketa-form')) updateProgress();
 });
 
+// ─── Валидация города ────────────────────────────────────────────────────────
+
+function showCityError() {
+  const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
+  const errEl  = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-error');
+  if (cityEl) cityEl.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+  if (errEl)  errEl.classList.remove('hidden');
+}
+
+function clearCityError() {
+  const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
+  const errEl  = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-error');
+  if (cityEl) cityEl.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+  if (errEl)  errEl.classList.add('hidden');
+}
+
 // ─── Сбор данных формы ───────────────────────────────────────────────────────
 
 function collectFormData() {
@@ -297,8 +319,18 @@ function collectFormData() {
 
 // ─── Валидация ───────────────────────────────────────────────────────────────
 
+/**
+ * fix 2.C + 5.A: валидируем наличие города перед сохранением.
+ * Если пустой — блокируем отправку и показываем inline-ошибку.
+ */
 function validateForm(formData) {
-  // Можно расширять — базовая валидация оставлена открытой
+  if (!formData.clientCity) {
+    showCityError();
+    const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
+    if (cityEl) cityEl.focus();
+    return false;
+  }
+  clearCityError();
   return true;
 }
 
@@ -314,6 +346,8 @@ function saveForm() {
     btnSave.textContent = 'Сохранение...';
   }
 
+  // fix 5.A: KC_CLIENT_CITY гарантированно не пустой (validateForm проверил выше).
+  // Пустые необязательные поля передаём как пустую строку — Bitrix24 их примет.
   BX24.callMethod('crm.lead.update', {
     id: leadId,
     fields: {
@@ -366,10 +400,10 @@ function addTimelineComment(formData) {
   });
   const comment = [
     'Анкета КЦ заполнена: ' + CURRENT_USERNAME + ' (' + dt + ')',
-    formData.clientCity   ? 'Город: ' + formData.clientCity          : '',
-    formData.debtTotal    ? 'Долг: '  + formData.debtTotal + ' ₽'   : '',
-    formData.mainPain     ? 'Боль: '  + formData.mainPain             : '',
-    formData.objections   ? 'Возражения: ' + formData.objections      : ''
+    formData.clientCity   ? 'Город: '      + formData.clientCity          : '',
+    formData.debtTotal    ? 'Долг: '       + formData.debtTotal + ' ₽'   : '',
+    formData.mainPain     ? 'Боль: '       + formData.mainPain             : '',
+    formData.objections   ? 'Возражения: ' + formData.objections           : ''
   ].filter(Boolean).join('\n');
 
   BX24.callMethod('crm.timeline.comment.add', {
@@ -404,6 +438,7 @@ document.addEventListener('DOMContentLoaded', function () {
     reset.addEventListener('click', function () {
       if (confirm('Сбросить все изменения?')) {
         if (form) form.reset();
+        clearCityError();
         updateProgress();
       }
     });
