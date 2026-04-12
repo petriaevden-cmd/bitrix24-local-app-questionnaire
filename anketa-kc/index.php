@@ -5,6 +5,13 @@
  *
  * Frontend: Tailwind CSS 4 + Flowbite 2
  * Самописные CSS-файлы НЕ подключаются.
+ *
+ * Порядок блоков (синхронизирован с form.js):
+ *   1. Персональные данные  (#personal-body)
+ *   2. Финансовые данные   (#finance-body)
+ *   3. Кредитная история   (#credit-body)
+ *   4. Заметки менеджера  (#manager-body)
+ *   5. Запись на встречу  (#booking-body)
  */
 require_once __DIR__ . '/config.php';
 
@@ -112,12 +119,6 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
       </div>
 
       <!-- Форма -->
-      <!--
-        Блоки раскрыты по умолчанию:
-        - кнопки-заголовки НЕ имеют data-collapse-toggle (Flowbite не управляет видимостью)
-        - тела блоков всегда видимы
-        - стрелка разворота убрана, т.к. сворачивание отключено
-      -->
       <form id="anketa-form" class="hidden flex-1 panel-scroll px-4 pb-4 space-y-3" novalidate>
 
         <!-- Блок 1: Персональные данные -->
@@ -147,11 +148,11 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
           <div id="credit-body" class="px-3 py-3 grid grid-cols-2 gap-2 text-xs"></div>
         </div>
 
-        <!-- Блок 4: Цель обращения -->
+        <!-- Блок 4: Заметки менеджера -->
         <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
           <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
             <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">4</span>
-            <span class="text-xs font-semibold text-gray-700">Цель обращения</span>
+            <span class="text-xs font-semibold text-gray-700">Заметки менеджера</span>
           </div>
           <div id="manager-body" class="px-3 py-3 grid grid-cols-1 gap-2 text-xs"></div>
         </div>
