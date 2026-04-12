@@ -110,19 +110,15 @@ function fieldTextarea(id, label, value, opts) {
 }
 
 /**
- * fix 2.C: поле города — обязательное (required), визуально помечено звёздочкой.
+ * Поле города — обязательное (required), визуально помечено звёздочкой.
+ * Баг 7 fix: datalist берётся из CITIES_TZ (cities.js, 900+ городов).
+ * Показывает предупреждение, если город не найден в словаре CITIES_TZ.
  * После изменения вызывает setClientCity() из calendar.js.
  */
 function fieldCity(id, label, value) {
-  const CITIES = [
-    'Москва','Санкт-Петербург','Новосибирск','Екатеринбург','Казань',
-    'Нижний Новгород','Красноярск','Самара','Уфа','Ростов-на-Дону',
-    'Омск','Краснодар','Воронеж','Пермь','Волгоград','Тюмень',
-    'Иркутск','Владивосток','Хабаровск','Якутск','Магадан','Чита',
-    'Сочи','Барнаул','Томск','Оренбург','Рязань','Ярославль',
-    'Ижевск','Севастополь'
-  ];
-  const opts = CITIES.map(function(c) {
+  // Баг 7 fix: генерируем datalist из CITIES_TZ (cities.js) — полный список городов России
+  const citySource = (typeof CITIES_TZ !== 'undefined') ? CITIES_TZ : {};
+  const opts = Object.keys(citySource).map(function(c) {
     return '<option value="' + escHtml(c) + '">';
   }).join('');
   return `
@@ -141,6 +137,7 @@ function fieldCity(id, label, value) {
                     focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
       <datalist id="city-list">${opts}</datalist>
       <p id="${id}-error" class="hidden text-xs text-red-500 mt-0.5">Укажите город клиента</p>
+      <p id="${id}-tz-warn" class="hidden text-xs text-amber-500 mt-0.5">Город не найден в справочнике — часовой пояс не будет определён</p>
     </div>`;
 }
 
@@ -207,14 +204,19 @@ function initForm(lead) {
   // Обработчик поля города — обновляет TZ в расписании сразу при вводе
   const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
   if (cityEl) {
-    cityEl.addEventListener('change', function () {
+    function _onCityChange() {
       clearCityError();
-      if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
-    });
-    cityEl.addEventListener('input', function () {
-      clearCityError();
-      if (typeof setClientCity === 'function') setClientCity(cityEl.value.trim());
-    });
+      const val = cityEl.value.trim();
+      // Баг 7 fix: показываем предупреждение, если город не в CITIES_TZ
+      const warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
+      if (warnEl) {
+        const known = (!val) || (typeof CITIES_TZ !== 'undefined' && CITIES_TZ[val] !== undefined);
+        warnEl.classList.toggle('hidden', known);
+      }
+      if (typeof setClientCity === 'function') setClientCity(val);
+    }
+    cityEl.addEventListener('change', _onCityChange);
+    cityEl.addEventListener('input',  _onCityChange);
   }
 
   // БЛОК 2: Финансовые данные
@@ -280,6 +282,9 @@ function clearCityError() {
   const errEl  = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-error');
   if (cityEl) cityEl.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
   if (errEl)  errEl.classList.add('hidden');
+  // Баг 7 fix: предупреждение TZ скрываем вместе с ошибкой валидации
+  const warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
+  if (warnEl) warnEl.classList.add('hidden');
 }
 
 // ─── Сбор данных формы ───────────────────────────────────────────────────────

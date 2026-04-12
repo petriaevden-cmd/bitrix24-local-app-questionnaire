@@ -5,8 +5,9 @@
  * 2. batch: crm.lead.get + user.current
  * 3. Заполняем шапку: имя текущего пользователя + заголовок лида
  * 4. initForm(lead)     — рендер полей, в т.ч. KC_CLIENT_CITY
- * 5. setClientCity()    — fix 3.B: передаём город из лида в calendar до initCalendar
- * 6. initCalendar()     — теперь _clientUtc уже установлен корректно
+ * 5. setClientCity(city, true)  — передаём город silent-режиме: только устанавливает _clientUtc,
+ *                                  НЕ вызывает loadAllSlots (избегаем двойного запроса)
+ * 6. initCalendar()             — теперь _clientUtc уже установлен, вызывает loadAllSlots один раз
  * 7. startPolling()
  */
 
@@ -67,11 +68,13 @@ BX24.init(function () {
       // 1. Сначала рендерим форму — поле f-UF_CRM_KC_CLIENT_CITY появляется в DOM
       if (typeof initForm === 'function') initForm(lead);
 
-      // 2. fix 3.B: передаём город из лида в calendar ДО initCalendar.
-      //    Если город сохранён в лиде — _clientUtc будет установлен сразу,
-      //    и первый рендер таблицы уже покажет время клиента.
+      // 2. Передаём город из лида в calendar ДО initCalendar.
+      //    silent=true: только устанавливает _clientUtc, НЕ вызывает loadAllSlots.
+      //    Это исправляет двойной вызов loadAllSlots (баг 2):
+      //    раньше setClientCity + initCalendar оба вызывали loadAllSlots = 22 API-запроса.
+      //    Теперь loadAllSlots вызывается только один раз — внутри initCalendar.
       if (typeof setClientCity === 'function') {
-        setClientCity((lead.UF_CRM_KC_CLIENT_CITY || '').trim());
+        setClientCity((lead.UF_CRM_KC_CLIENT_CITY || '').trim(), true);
       }
 
       // 3. Теперь инициализируем календарь — _clientUtc уже не null (если город есть)

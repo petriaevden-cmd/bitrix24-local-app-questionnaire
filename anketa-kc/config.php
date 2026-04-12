@@ -21,8 +21,8 @@ define('SLOT_DURATION_MIN', 60);
 // Горизонт показа слотов (дней вперёд)
 define('SLOT_HORIZON_DAYS', 7);
 
-// Интервал polling-обновления слотов (секунды)
-define('POLLING_INTERVAL', 30);
+// Баг 11 fix: POLLING_INTERVAL удалён — startPolling() является no-op,
+// автообновление не используется.
 
 // Минимум свободных слотов на день; если меньше — автопереход на следующий день
 define('MIN_SLOTS_PER_DAY', 3);

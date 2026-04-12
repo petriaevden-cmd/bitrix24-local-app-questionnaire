@@ -19,7 +19,7 @@ $portalHost  = htmlspecialchars(parse_url(PORTAL_URL, PHP_URL_HOST), ENT_QUOTES)
 $salesDeptId = (int) SALES_DEPT_ID;
 $slotMin     = (int) SLOT_DURATION_MIN;
 $horizonDays = (int) SLOT_HORIZON_DAYS;
-$pollingMs   = (int) POLLING_INTERVAL * 1000;
+// Баг 11 fix: POLLING_INTERVAL удалён из APP_CONFIG — startPolling() является no-op, поллинг не используется
 $minSlots    = (int) MIN_SLOTS_PER_DAY;
 $clientHrMin = (int) CLIENT_HOUR_MIN;
 $clientHrMax = (int) CLIENT_HOUR_MAX;
@@ -60,7 +60,8 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
       salesDeptId:  <?= $salesDeptId ?>,
       slotMin:      <?= $slotMin ?>,
       horizonDays:  <?= $horizonDays ?>,
-      pollingMs:    <?= $pollingMs ?>,
+      // Баг 11 fix: pollingMs удалён — startPolling() является no-op,
+      // автообновление не используется
       minSlots:     <?= $minSlots ?>,
       clientHrMin:  <?= $clientHrMin ?>,
       clientHrMax:  <?= $clientHrMax ?>
@@ -273,6 +274,9 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
 
 <!-- Логика приложения -->
+<!-- Баг 3 fix: cities.js и mp-config.js подключены перед остальными скриптами -->
+<script src="assets/cities.js"></script>
+<script src="assets/mp-config.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/form.js"></script>
 <script src="assets/calendar.js"></script>
@@ -280,22 +284,24 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
 
 <!-- Обработчик кнопки обновления расписания -->
 <script>
+  // Баг 6 fix: кнопка разблокируется по завершению renderTable (через _onRenderComplete),
+  // а не по фиксированному таймеру.
   document.addEventListener('DOMContentLoaded', function () {
     const btn = document.getElementById('btn-refresh-slots');
     if (btn) {
       btn.addEventListener('click', function () {
         if (typeof loadAllSlots !== 'function') return;
-        // Визуальная индикация загрузки на кнопке
         const icon = btn.querySelector('svg');
         if (icon) icon.classList.add('animate-spin');
         btn.disabled = true;
-        // loadAllSlots сам вызовет renderTable по завершению;
-        // восстанавливаем кнопку через небольшую задержку
+        // Устанавливаем колбэк: кнопка разблокируется только после реального рендера таблицы
+        if (typeof _onRenderComplete !== 'undefined') {
+          _onRenderComplete = function () {
+            btn.disabled = false;
+            if (icon) icon.classList.remove('animate-spin');
+          };
+        }
         loadAllSlots();
-        setTimeout(function () {
-          btn.disabled = false;
-          if (icon) icon.classList.remove('animate-spin');
-        }, 1500);
       });
     }
   });

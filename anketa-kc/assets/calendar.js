@@ -4,38 +4,53 @@
  * Вид: строки = МП (только короткое название, без имени сотрудника),
  *      столбцы = часовые слоты дня.
  * Логика занятости, TZ, автопереход — без изменений.
+ *
+ * Словарь МП берётся из MP_CONFIG (mp-config.js).
+ * Словарь городов берётся из CITIES_TZ (cities.js).
  */
 
 'use strict';
 
-// ── Словарь менеджеров ────────────────────────────────────────────────────────
-const MP_CALENDARS = {
-  MP1Vstrechi:  { label: 'Сергей Хватов',        short: 'МП 1',  utc: 3, from: 10, to: 17 },
-  MP2Vstrechi:  { label: 'Мария Прокопьева',      short: 'МП 2',  utc: 3, from: 9,  to: 17 },
-  MP3Vstrechi:  { label: 'Ефим Костылев',         short: 'МП 3',  utc: 4, from: 9,  to: 17 },
-  MP4Vstrechi:  { label: 'Виктория Григорьева',   short: 'МП 4',  utc: 4, from: 9,  to: 17 },
-  MP5Vstrechi:  { label: 'Джульетта Мурадян',     short: 'МП 5',  utc: 4, from: 11, to: 19 },
-  MP6Vstrechi:  { label: 'Виталий Андреев',       short: 'МП 6',  utc: 4, from: 9,  to: 17 },
-  MP7Vstrechi:  { label: 'Виталий Прилепин',      short: 'МП 7',  utc: 3, from: 9,  to: 18 },
-  MP8Vstrechi:  { label: 'Каролина Гнездилова',   short: 'МП 8',  utc: 3, from: 9,  to: 19 },
-  MP9Vstrechi:  { label: 'Сергей Хватов',         short: 'МП 9',  utc: 3, from: 9,  to: 18 },
-  MP10Vstrechi: { label: 'Анна Радаева',          short: 'МП 10', utc: 3, from: 9,  to: 18 },
-  MP11Vstrechi: { label: 'Виктория Владимирова',  short: 'МП 11', utc: 3, from: 9,  to: 18 }
-};
+/**
+ * Строим MP_CALENDARS из MP_CONFIG (mp-config.js) динамически.
+ * Формат MP_CONFIG: { id: { bitrixUserId, name, city, workStart, workEnd, workDays, slotMinutes, active } }
+ * calId соответствует ключу «MPnVstrechi» — строим по bitrixUserId.
+ */
+function buildMpCalendars() {
+  if (typeof MP_CONFIG === 'undefined') return {};
+  const result = {};
+  Object.keys(MP_CONFIG).forEach(function (id) {
+    const mp = MP_CONFIG[id];
+    if (!mp.active) return;
+    const utc = (typeof getCityTZ === 'function')
+      ? (getCityTZ(mp.city) || 0)
+      : 0;
+    const calId = 'MP' + mp.bitrixUserId + 'Vstrechi';
+    const startH = parseInt((mp.workStart || '09:00').split(':')[0], 10);
+    const endH   = parseInt((mp.workEnd   || '18:00').split(':')[0], 10);
+    result[calId] = {
+      label: mp.name,
+      short: 'МП ' + mp.bitrixUserId,
+      utc:   utc,
+      from:  startH,
+      to:    endH
+    };
+  });
+  return result;
+}
 
-// ── Словарь городов ───────────────────────────────────────────────────────────
-const CITY_TZ = {
-  'Москва': 3,         'Санкт-Петербург': 3, 'Новосибирск': 7,
-  'Екатеринбург': 5,   'Казань': 3,          'Нижний Новгород': 3,
-  'Красноярск': 7,     'Самара': 4,          'Уфа': 5,
-  'Ростов-на-Дону': 3, 'Омск': 6,            'Краснодар': 3,
-  'Воронеж': 3,        'Пермь': 5,           'Волгоград': 3,
-  'Тюмень': 5,         'Иркутск': 8,         'Владивосток': 10,
-  'Хабаровск': 10,     'Якутск': 9,          'Магадан': 10,
-  'Чита': 9,           'Сочи': 3,            'Барнаул': 7,
-  'Томск': 7,          'Оренбург': 5,        'Рязань': 3,
-  'Ярославль': 3,      'Ижевск': 4,          'Севастополь': 3
-};
+// Инициализируется при первом вызове initCalendar()
+let MP_CALENDARS = null;
+
+/**
+ * Возвращает UTC-смещение города.
+ * Использует CITIES_TZ из cities.js (если подключён), иначе fallback — пустой объект.
+ */
+function _getCityTz(cityName) {
+  if (typeof getCityTZ === 'function') return getCityTZ(cityName);
+  if (typeof CITIES_TZ !== 'undefined' && CITIES_TZ[cityName] !== undefined) return CITIES_TZ[cityName];
+  return null;
+}
 
 // ── Состояние ────────────────────────────────────────────────────────────────
 let _currentDay    = null;
@@ -52,6 +67,9 @@ let _bookingInProgress = false;
 
 // ── Инициализация ────────────────────────────────────────────────────────────
 function initCalendar() {
+  // Баг 4 fix: строим MP_CALENDARS из MP_CONFIG один раз при инициализации
+  MP_CALENDARS = buildMpCalendars();
+
   _currentDay = nextWorkday(new Date());
 
   const btnPrev = document.getElementById('btn-day-prev');
@@ -59,6 +77,8 @@ function initCalendar() {
   if (btnPrev) btnPrev.addEventListener('click', function () { shiftDay(-1); });
   if (btnNext) btnNext.addEventListener('click', function () { shiftDay(+1); });
 
+  // Баг 2 fix: initCalendar вызывает loadAllSlots только один раз.
+  // _clientUtc уже установлен через setClientCity() в app.js до вызова initCalendar.
   loadAllSlots();
 }
 
@@ -102,8 +122,9 @@ function fmtBxUTC(utcMs) {
 function getClientUtcFromForm() {
   const el = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
   if (!el || !el.value) return null;
-  const tz = CITY_TZ[el.value.trim()];
-  return (tz !== undefined) ? tz : null;
+  // Баг 3/7 fix: используем _getCityTz(), которая читает полный CITIES_TZ из cities.js
+  const tz = _getCityTz(el.value.trim());
+  return (tz !== null && tz !== undefined) ? tz : null;
 }
 
 // ── Загрузка всех МП за день ─────────────────────────────────────────────────
@@ -111,7 +132,7 @@ function loadAllSlots() {
   _clientUtc   = getClientUtcFromForm();
   _busyCache   = {};
   _loadedCount = 0;
-  _totalToLoad = Object.keys(MP_CALENDARS).length;
+  _totalToLoad = Object.keys(MP_CALENDARS || {}).length;
 
   const dateEl = document.getElementById('schedule-date');
   if (dateEl) dateEl.textContent = fmtDate(_currentDay);
@@ -127,7 +148,7 @@ function loadAllSlots() {
   const dayEnd   = new Date(_currentDay);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  Object.keys(MP_CALENDARS).forEach(function (calId) {
+  Object.keys(MP_CALENDARS || {}).forEach(function (calId) {
     BX24.callMethod('calendar.accessibility.get', {
       from: fmtISO(dayStart),
       to:   fmtISO(dayEnd),
@@ -176,12 +197,16 @@ function buildFreeSlots(mp, day, busy) {
 }
 
 // ── Сбор всех уникальных часов для заголовка таблицы ─────────────────────────
+// Баг 1 fix: ключ в hoursSet — реальный UTC-timestamp слота (не UTC минус смещение МП).
+// col.utcMs теперь является настоящим UTC, что позволяет корректно вычислять
+// время клиента как fmtHour(col.utcMs, _clientUtc).
 function collectAllHours(slotsMap) {
   const hoursSet = {};
   Object.keys(slotsMap).forEach(function (calId) {
     const mp = MP_CALENDARS[calId];
     (slotsMap[calId] || []).forEach(function (slot) {
-      hoursSet[slot.utcMs - mp.utc * 3600000] = fmtHour(slot.utcMs, mp.utc);
+      // Ключ = реальный UTC timestamp слота
+      hoursSet[slot.utcMs] = fmtHour(slot.utcMs, mp.utc);
     });
   });
   return Object.keys(hoursSet).sort(function (a, b) { return a - b; }).map(function (k) {
@@ -190,13 +215,16 @@ function collectAllHours(slotsMap) {
 }
 
 // ── Рендер таблицы ────────────────────────────────────────────────────────────
+// Баг 6 fix: колбэк для разблокировки кнопки «Обновить расписание» после рендера.
+let _onRenderComplete = null;
+
 function renderTable() {
   const panel = document.getElementById('slots-panel');
   if (!panel) return;
 
   const slotsMap = {};
   let totalFree  = 0;
-  Object.keys(MP_CALENDARS).forEach(function (calId) {
+  Object.keys(MP_CALENDARS || {}).forEach(function (calId) {
     const mp    = MP_CALENDARS[calId];
     const busy  = _busyCache[calId] || [];
     const slots = buildFreeSlots(mp, _currentDay, busy);
@@ -250,6 +278,7 @@ function renderTable() {
     const th = document.createElement('th');
     th.className = 'py-2 px-2 font-semibold text-gray-600 border-b border-gray-200 text-center whitespace-nowrap min-w-[80px]';
     if (hasClientTz) {
+      // Баг 1 fix: col.utcMs теперь реальный UTC — fmtHour(col.utcMs, _clientUtc) корректен
       const clientTime = fmtHour(col.utcMs, _clientUtc);
       th.innerHTML =
         '<span class="block font-mono text-gray-800">' + escHtml(col.label) + '</span>' +
@@ -282,7 +311,7 @@ function renderTable() {
   // ── TBODY ─────────────────────────────────────────────────────────────────
   const tbody = document.createElement('tbody');
 
-  Object.keys(MP_CALENDARS).forEach(function (calId, rowIdx) {
+  Object.keys(MP_CALENDARS || {}).forEach(function (calId, rowIdx) {
     const mp    = MP_CALENDARS[calId];
     const slots = slotsMap[calId] || [];
     const slotsByUtc = {};
@@ -302,7 +331,8 @@ function renderTable() {
       const td = document.createElement('td');
       td.className = 'py-1.5 px-1.5 border-b border-gray-100 text-center';
 
-      const slot = slotsByUtc[col.utcMs + mp.utc * 3600000];
+      // Баг 1 fix: col.utcMs теперь реальный UTC — прямой поиск в slotsByUtc без прибавления смещения
+      const slot = slotsByUtc[col.utcMs];
 
       if (slot) {
         const btn = document.createElement('button');
@@ -317,6 +347,7 @@ function renderTable() {
         td.appendChild(btn);
       } else {
         const inWorkHours = (function () {
+          // Баг 1 fix: col.utcMs реальный UTC, добавляем смещение МП для получения локального часа
           const slotLocalH = new Date(col.utcMs + mp.utc * 3600000).getUTCHours();
           return slotLocalH >= mp.from && slotLocalH < mp.to;
         }());
@@ -352,11 +383,17 @@ function renderTable() {
     '<span class="flex items-center gap-1.5 text-[11px] text-gray-500">' +
     '<span class="inline-block w-4 h-1 rounded bg-gray-100 border border-gray-200"></span>Вне графика</span>';
   panel.appendChild(legend);
+
+  // Баг 6 fix: уведомляем внешний код о завершении рендера
+  if (typeof _onRenderComplete === 'function') {
+    _onRenderComplete();
+    _onRenderComplete = null;
+  }
 }
 
 // ── Выбор слота ───────────────────────────────────────────────────────────────
 function selectSlot(calId, slot) {
-  const mp = MP_CALENDARS[calId] || {};
+  const mp = (MP_CALENDARS || {})[calId] || {};
   const bookingBody = document.getElementById('booking-body');
   if (bookingBody) {
     bookingBody.innerHTML =
@@ -396,7 +433,7 @@ function bookSlot(calId, slot) {
     return;
   }
   const fio = (document.getElementById('f-fio') || {}).value || 'Клиент';
-  const mp  = MP_CALENDARS[calId] || {};
+  const mp  = (MP_CALENDARS || {})[calId] || {};
 
   BX24.callMethod('calendar.event.add', {
     type:          'calendar',
@@ -458,7 +495,7 @@ function saveBookingToLead(calId, fromDt, eventId) {
 }
 
 function notifyMpByCalId(calId, slot, leadName) {
-  const mp = MP_CALENDARS[calId] || {};
+  const mp = (MP_CALENDARS || {})[calId] || {};
   BX24.callMethod('crm.timeline.comment.add', {
     fields: {
       ENTITY_ID:   leadId,
@@ -470,14 +507,22 @@ function notifyMpByCalId(calId, slot, leadName) {
 }
 
 // ── Публичный API для form.js ─────────────────────────────────────────────────
-function setClientCity(cityName) {
+/**
+ * Баг 2 fix: принимает опциональный флаг silent.
+ * При silent=true только устанавливает _clientUtc без вызова loadAllSlots.
+ * Используется в app.js при инициализации (до initCalendar),
+ * чтобы избежать двойного вызова loadAllSlots.
+ */
+function setClientCity(cityName, silent) {
   if (cityName !== undefined) {
-    _clientUtc = (CITY_TZ[cityName] !== undefined) ? CITY_TZ[cityName] : null;
+    // Баг 3/7 fix: используем _getCityTz() для полного словаря городов
+    const tz = _getCityTz(cityName);
+    _clientUtc = (tz !== null && tz !== undefined) ? tz : null;
   } else {
     _clientUtc = getClientUtcFromForm();
   }
   _autoJumpCount = 0;
-  loadAllSlots();
+  if (!silent) loadAllSlots();
 }
 
 // ── Вспомогательные ──────────────────────────────────────────────────────────
@@ -505,8 +550,5 @@ function setHiddenField(name, value) {
   el.value = value;
 }
 
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+// Баг 5 fix: escHtml удалена из calendar.js — единственное определение в form.js.
+// form.js подключается перед calendar.js, поэтому функция всегда доступна.
