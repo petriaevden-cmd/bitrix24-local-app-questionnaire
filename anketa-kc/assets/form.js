@@ -5,30 +5,30 @@
  *
  * Поля анкеты (26 UF_CRM_KC_* полей):
  *
- * БЛОК 1 — Финансовые данные:
+ * БЛОК 1 — Персональные данные:
  *   1.  KC_FULLNAME           (string)      — ФИО (авто из лида)
- *   2.  KC_DEBT_TOTAL         (integer)     — Общая сумма долга
- *   3.  KC_MONTHLY_PAYMENT    (integer)     — Ежемесячный платёж
- *   4.  KC_INCOME_OFFICIAL    (enumeration) — Официальный доход
- *   5.  KC_INCOME_UNOFFICIAL  (integer)     — Неофициальный доход
- *   6.  KC_SALARY_CARD        (enumeration) — Зарплатная карта
+ *   2.  KC_WORKPLACE          (string)      — Место работы
+ *   3.  KC_MARITAL_STATUS     (enumeration) — Семейное положение
+ *   4.  KC_CHILDREN           (enumeration) — Дети
+ *   5.  KC_JOINT_PROPERTY     (enumeration) — Совместное имущество
+ *   6.  KC_CRIMINAL           (enumeration) — Судимости
+ *   7.  KC_OOO                (enumeration) — ООО
+ *   8.  KC_IP                 (enumeration) — ИП
  *
- * БЛОК 2 — Кредитная история:
- *   7.  KC_CREDITORS          (string)      — Кредиторы
- *   8.  KC_COLLATERAL         (enumeration) — Залог
- *   9.  KC_OVERDUE            (string)      — Просрочки
- *   10. KC_FSSP               (enumeration) — ФССП
- *   11. KC_PROPERTY           (enumeration) — Имущество
- *   12. KC_DEALS              (enumeration) — Сделки
+ * БЛОК 2 — Финансовые данные:
+ *   9.  KC_DEBT_TOTAL         (integer)     — Общая сумма долга
+ *   10. KC_MONTHLY_PAYMENT    (integer)     — Ежемесячный платёж
+ *   11. KC_INCOME_OFFICIAL    (enumeration) — Официальный доход
+ *   12. KC_INCOME_UNOFFICIAL  (integer)     — Неофициальный доход
+ *   13. KC_SALARY_CARD        (enumeration) — Зарплатная карта
  *
- * БЛОК 3 — Личные данные:
- *   13. KC_WORKPLACE          (string)      — Место работы
- *   14. KC_MARITAL_STATUS     (enumeration) — Семейное положение
- *   15. KC_CHILDREN           (enumeration) — Дети
- *   16. KC_JOINT_PROPERTY     (enumeration) — Совместное имущество
- *   17. KC_CRIMINAL           (enumeration) — Судимости
- *   18. KC_OOO                (enumeration) — ООО
- *   19. KC_IP                 (enumeration) — ИП
+ * БЛОК 3 — Кредитная история:
+ *   14. KC_CREDITORS          (string)      — Кредиторы
+ *   15. KC_COLLATERAL         (enumeration) — Залог
+ *   16. KC_OVERDUE            (string)      — Просрочки
+ *   17. KC_FSSP               (enumeration) — ФССП
+ *   18. KC_PROPERTY           (enumeration) — Имущество
+ *   19. KC_DEALS              (enumeration) — Сделки
  *
  * БЛОК 4 — Заметки менеджера:
  *   20. KC_KM_EXCLUSION       (string)      — Исключение из КМ
@@ -172,16 +172,26 @@ function initForm(lead) {
   const f = lead; // shorthand
   const fio = [f.LASTNAME, f.NAME, f.SECONDNAME].filter(Boolean).join(' ');
 
-  // БЛОК 1: Финансовые данные
-  document.getElementById('finance-body').innerHTML =
-    fieldText   ('f-fio',             'ФИО клиента',          fio,                             { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
-    fieldNumber ('f-debt-total',       'Общая сумма долга, ₽', f.UF_CRM_KC_DEBT_TOTAL,          { placeholder: '0', min: 0 }) +
-    fieldNumber ('f-monthly-payment',  'Ежемесячный платёж, ₽',f.UF_CRM_KC_MONTHLY_PAYMENT,    { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-income-official',  'Официальный доход',    f.UF_CRM_KC_INCOME_OFFICIAL,     OPTS_INCOME_OFFICIAL) +
-    fieldNumber ('f-income-unofficial','Неофициальный доход, ₽',f.UF_CRM_KC_INCOME_UNOFFICIAL,  { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-salary-card',      'Зарплатная карта',     f.UF_CRM_KC_SALARY_CARD,         OPTS_SALARY_CARD);
+  // БЛОК 1: Персональные данные
+  document.getElementById('personal-body').innerHTML =
+    fieldText   ('f-fio',           'ФИО клиента',          fio,                            { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
+    fieldText   ('f-workplace',     'Место работы',         f.UF_CRM_KC_WORKPLACE,          { colSpan: true, placeholder: 'Наименование организации' }) +
+    fieldSelect ('f-marital',       'Семейное положение',   f.UF_CRM_KC_MARITAL_STATUS,     OPTS_MARITAL) +
+    fieldSelect ('f-children',      'Дети',                 f.UF_CRM_KC_CHILDREN,           OPTS_CHILDREN) +
+    fieldSelect ('f-joint-property','Совместное имущество',  f.UF_CRM_KC_JOINT_PROPERTY,     OPTS_YES_NO) +
+    fieldSelect ('f-criminal',      'Судимости',            f.UF_CRM_KC_CRIMINAL,           OPTS_YES_NO) +
+    fieldSelect ('f-ooo',           'ООО',                  f.UF_CRM_KC_OOO,                OPTS_YES_NO) +
+    fieldSelect ('f-ip',            'ИП',                   f.UF_CRM_KC_IP,                 OPTS_YES_NO);
 
-  // БЛОК 2: Кредитная история
+  // БЛОК 2: Финансовые данные
+  document.getElementById('finance-body').innerHTML =
+    fieldNumber ('f-debt-total',       'Общая сумма долга, ₽',  f.UF_CRM_KC_DEBT_TOTAL,         { placeholder: '0', min: 0 }) +
+    fieldNumber ('f-monthly-payment',  'Ежемесячный платёж, ₽', f.UF_CRM_KC_MONTHLY_PAYMENT,    { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-income-official',  'Официальный доход',     f.UF_CRM_KC_INCOME_OFFICIAL,    OPTS_INCOME_OFFICIAL) +
+    fieldNumber ('f-income-unofficial','Неофициальный доход, ₽', f.UF_CRM_KC_INCOME_UNOFFICIAL,  { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-salary-card',      'Зарплатная карта',      f.UF_CRM_KC_SALARY_CARD,        OPTS_SALARY_CARD);
+
+  // БЛОК 3: Кредитная история
   document.getElementById('credit-body').innerHTML =
     fieldText   ('f-creditors',  'Кредиторы',    f.UF_CRM_KC_CREDITORS, { colSpan: true, placeholder: 'Банки, МФО...' }) +
     fieldSelect ('f-collateral', 'Залог',        f.UF_CRM_KC_COLLATERAL, OPTS_YES_NO) +
@@ -189,16 +199,6 @@ function initForm(lead) {
     fieldSelect ('f-fssp',       'ФССП',         f.UF_CRM_KC_FSSP,       OPTS_YES_NO) +
     fieldSelect ('f-property',   'Имущество',    f.UF_CRM_KC_PROPERTY,   OPTS_YES_NO) +
     fieldSelect ('f-deals',      'Сделки',       f.UF_CRM_KC_DEALS,      OPTS_YES_NO);
-
-  // БЛОК 3: Личные данные
-  document.getElementById('personal-body').innerHTML =
-    fieldText   ('f-workplace',     'Место работы',         f.UF_CRM_KC_WORKPLACE,      { colSpan: true, placeholder: 'Наименование организации' }) +
-    fieldSelect ('f-marital',       'Семейное положение',   f.UF_CRM_KC_MARITAL_STATUS,  OPTS_MARITAL) +
-    fieldSelect ('f-children',      'Дети',                 f.UF_CRM_KC_CHILDREN,        OPTS_CHILDREN) +
-    fieldSelect ('f-joint-property','Совместное имущество',  f.UF_CRM_KC_JOINT_PROPERTY,  OPTS_YES_NO) +
-    fieldSelect ('f-criminal',      'Судимости',            f.UF_CRM_KC_CRIMINAL,        OPTS_YES_NO) +
-    fieldSelect ('f-ooo',           'ООО',                  f.UF_CRM_KC_OOO,             OPTS_YES_NO) +
-    fieldSelect ('f-ip',            'ИП',                   f.UF_CRM_KC_IP,              OPTS_YES_NO);
 
   // БЛОК 4: Заметки менеджера
   document.getElementById('manager-body').innerHTML =
@@ -241,6 +241,13 @@ function collectFormData() {
   }
   return {
     fio:               v('f-fio'),
+    workplace:         v('f-workplace'),
+    maritalStatus:     v('f-marital'),
+    children:          v('f-children'),
+    jointProperty:     v('f-joint-property'),
+    criminal:          v('f-criminal'),
+    ooo:               v('f-ooo'),
+    ip:                v('f-ip'),
     debtTotal:         v('f-debt-total'),
     monthlyPayment:    v('f-monthly-payment'),
     incomeOfficial:    v('f-income-official'),
@@ -252,13 +259,6 @@ function collectFormData() {
     fssp:              v('f-fssp'),
     property:          v('f-property'),
     deals:             v('f-deals'),
-    workplace:         v('f-workplace'),
-    maritalStatus:     v('f-marital'),
-    children:          v('f-children'),
-    jointProperty:     v('f-joint-property'),
-    criminal:          v('f-criminal'),
-    ooo:               v('f-ooo'),
-    ip:                v('f-ip'),
     kmExclusion:       v('f-km-exclusion'),
     mainPain:          v('f-main-pain'),
     objections:        v('f-objections'),
@@ -294,6 +294,13 @@ function saveForm() {
     id: leadId,
     fields: {
       UF_CRM_KC_FULLNAME:          formData.fio,
+      UF_CRM_KC_WORKPLACE:         formData.workplace,
+      UF_CRM_KC_MARITAL_STATUS:    formData.maritalStatus,
+      UF_CRM_KC_CHILDREN:          formData.children,
+      UF_CRM_KC_JOINT_PROPERTY:    formData.jointProperty,
+      UF_CRM_KC_CRIMINAL:          formData.criminal,
+      UF_CRM_KC_OOO:               formData.ooo,
+      UF_CRM_KC_IP:                formData.ip,
       UF_CRM_KC_DEBT_TOTAL:        formData.debtTotal,
       UF_CRM_KC_MONTHLY_PAYMENT:   formData.monthlyPayment,
       UF_CRM_KC_INCOME_OFFICIAL:   formData.incomeOfficial,
@@ -305,13 +312,6 @@ function saveForm() {
       UF_CRM_KC_FSSP:              formData.fssp,
       UF_CRM_KC_PROPERTY:          formData.property,
       UF_CRM_KC_DEALS:             formData.deals,
-      UF_CRM_KC_WORKPLACE:         formData.workplace,
-      UF_CRM_KC_MARITAL_STATUS:    formData.maritalStatus,
-      UF_CRM_KC_CHILDREN:          formData.children,
-      UF_CRM_KC_JOINT_PROPERTY:    formData.jointProperty,
-      UF_CRM_KC_CRIMINAL:          formData.criminal,
-      UF_CRM_KC_OOO:               formData.ooo,
-      UF_CRM_KC_IP:                formData.ip,
       UF_CRM_KC_KM_EXCLUSION:      formData.kmExclusion,
       UF_CRM_KC_MAIN_PAIN:         formData.mainPain,
       UF_CRM_KC_OBJECTIONS:        formData.objections,
