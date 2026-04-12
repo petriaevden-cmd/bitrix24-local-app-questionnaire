@@ -1,30 +1,18 @@
 /**
- * polling.js — периодическое обновление расписания
+ * polling.js — обновление расписания
  *
- * Интервал берётся из APP_CONFIG.pollingMs (задан в index.php из config.php).
+ * Автоматический setInterval убран намеренно.
+ * Расписание загружается:
+ *   1. Автоматически при инициализации — через initCalendar() в app.js
+ *   2. Автоматически после бронирования  — через loadAllSlots() в calendar.js
+ *   3. Вручную по кнопке «Обновить расписание» — через btn-refresh-slots в index.php
  *
- * Условие запуска обновления:
- *   - loadAllSlots() доступна (функция из calendar.js)
- *   - _currentDay инициализирован (не null) — значит initCalendar() уже отработал
- *
- * Была ошибка: проверка typeof _currentCalId — эта переменная
- * нигде не объявлялась в calendar.js (там нет выбора одного МП —
- * расписание грузится сразу для всех). setInterval никогда не срабатывал.
+ * startPolling() оставлен как no-op для совместимости с вызовом в app.js.
  */
 
 'use strict';
 
 function startPolling() {
-  const ms = (window.APP_CONFIG || {}).pollingMs || 30000;
-
-  function tick() {
-    // Проверяем: calendar.js инициализирован (_currentDay не null)
-    // и функция loadAllSlots доступна
-    if (typeof loadAllSlots === 'function' &&
-        typeof _currentDay !== 'undefined' && _currentDay !== null) {
-      loadAllSlots();
-    }
-  }
-
-  setInterval(tick, ms);
+  // Автообновление отключено. Расписание обновляется вручную кнопкой
+  // «Обновить расписание» или автоматически при загрузке и после бронирования.
 }

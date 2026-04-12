@@ -221,7 +221,7 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
         <!-- Таб: Расписание -->
         <div id="tab-schedule" role="tabpanel" class="p-3 space-y-2">
 
-          <!-- Навигация по дням -->
+          <!-- Навигация по дням + кнопка обновления -->
           <div class="bg-white border border-gray-200 rounded-lg px-3 py-2">
             <div class="flex items-center justify-between gap-2">
               <button id="btn-day-prev" type="button"
@@ -234,6 +234,14 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
                       class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-xs text-gray-500 hover:bg-gray-100 transition-colors">
                 След. день
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+            <!-- Кнопка ручного обновления расписания -->
+            <div class="mt-2 pt-2 border-t border-gray-100">
+              <button id="btn-refresh-slots" type="button"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors w-full justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Обновить расписание
               </button>
             </div>
           </div>
@@ -269,6 +277,29 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
 <script src="assets/form.js"></script>
 <script src="assets/calendar.js"></script>
 <script src="assets/polling.js"></script>
+
+<!-- Обработчик кнопки обновления расписания -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('btn-refresh-slots');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof loadAllSlots !== 'function') return;
+        // Визуальная индикация загрузки на кнопке
+        const icon = btn.querySelector('svg');
+        if (icon) icon.classList.add('animate-spin');
+        btn.disabled = true;
+        // loadAllSlots сам вызовет renderTable по завершению;
+        // восстанавливаем кнопку через небольшую задержку
+        loadAllSlots();
+        setTimeout(function () {
+          btn.disabled = false;
+          if (icon) icon.classList.remove('animate-spin');
+        }, 1500);
+      });
+    }
+  });
+</script>
 
 </body>
 </html>
