@@ -1,7 +1,8 @@
 /**
  * calendar.js — расписание МП (табличный вид)
  *
- * Вид: строки = МП, столбцы = часовые слоты дня.
+ * Вид: строки = МП (только короткое название, без имени сотрудника),
+ *      столбцы = часовые слоты дня.
  * Логика занятости, TZ, автопереход — без изменений.
  */
 
@@ -241,8 +242,8 @@ function renderTable() {
   const trHead = document.createElement('tr');
 
   const thCorner = document.createElement('th');
-  thCorner.className = 'sticky left-0 z-10 bg-gray-50 text-left py-2 px-3 font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap min-w-[120px]';
-  thCorner.innerHTML = 'Менеджер';
+  thCorner.className = 'sticky left-0 z-10 bg-gray-50 text-left py-2 px-3 font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap min-w-[64px]';
+  thCorner.innerHTML = 'МП';
   trHead.appendChild(thCorner);
 
   allHours.forEach(function (col) {
@@ -290,12 +291,11 @@ function renderTable() {
     const tr = document.createElement('tr');
     tr.className = (rowIdx % 2 === 0) ? 'bg-white' : 'bg-gray-50/50';
 
+    // Только короткое название МП — без имени сотрудника
     const tdMp = document.createElement('td');
     tdMp.className = 'sticky left-0 z-10 py-2 px-3 border-b border-r border-gray-200 whitespace-nowrap font-medium text-gray-700 ' +
       ((rowIdx % 2 === 0) ? 'bg-white' : 'bg-gray-50');
-    tdMp.innerHTML =
-      '<span class="block">' + escHtml(mp.short) + '</span>' +
-      '<span class="block text-[10px] text-gray-400 font-normal">' + escHtml(mp.label) + '</span>';
+    tdMp.textContent = mp.short;
     tr.appendChild(tdMp);
 
     allHours.forEach(function (col) {
@@ -361,7 +361,7 @@ function selectSlot(calId, slot) {
   if (bookingBody) {
     bookingBody.innerHTML =
       '<div class="space-y-1.5">' +
-      '<div class="text-xs text-gray-500">МП: <span class="font-semibold text-gray-800">' + escHtml(mp.short + ' — ' + mp.label) + '</span></div>' +
+      '<div class="text-xs text-gray-500">МП: <span class="font-semibold text-gray-800">' + escHtml(mp.short) + '</span></div>' +
       '<div class="text-xs text-gray-500">Время МП: <span class="font-mono font-semibold text-gray-800">' +
         escHtml(fmtHour(slot.utcMs, mp.utc)) + ' UTC+' + mp.utc + '</span></div>' +
       (_clientUtc !== null
@@ -377,7 +377,6 @@ function selectSlot(calId, slot) {
     const confirmBtn = document.getElementById('btn-book-confirm');
     if (confirmBtn) {
       confirmBtn.addEventListener('click', function () {
-        // fix 4.A: защита от двойного бронирования
         if (_bookingInProgress) return;
         _bookingInProgress = true;
         confirmBtn.disabled = true;
@@ -414,7 +413,6 @@ function bookSlot(calId, slot) {
 
     if (result.error()) {
       showError('Ошибка бронирования: ' + result.error());
-      // fix 4.B: восстанавливаем кнопку чтобы можно было повторить
       const confirmBtn = document.getElementById('btn-book-confirm');
       if (confirmBtn) {
         confirmBtn.disabled = false;
@@ -438,7 +436,7 @@ function bookSlot(calId, slot) {
       statusEl.innerHTML =
         '<svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">' +
           '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' +
-        '<span>Запись подтверждена: ' + escHtml(mp.short + ' — ' + mp.label) + ', ' +
+        '<span>Запись подтверждена: ' + escHtml(mp.short) + ', ' +
         escHtml(fmtHour(slot.utcMs, mp.utc)) + ' UTC+' + mp.utc + '</span>';
       statusEl.classList.remove('hidden');
     }
@@ -465,7 +463,7 @@ function notifyMpByCalId(calId, slot, leadName) {
     fields: {
       ENTITY_ID:   leadId,
       ENTITY_TYPE: 'lead',
-      COMMENT:     'Запись к ' + (mp.short || calId) + ' — ' + mp.label + ' на ' +
+      COMMENT:     'Запись к ' + (mp.short || calId) + ' на ' +
                    fmtHour(slot.utcMs, mp.utc) + ' UTC+' + mp.utc + '. Клиент: ' + leadName
     }
   }, function () {});
