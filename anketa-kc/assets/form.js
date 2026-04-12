@@ -49,49 +49,52 @@
 
 function fieldText(id, label, value, opts) {
   opts = opts || {};
+  const span = opts.colSpan ? 'col-span-2' : '';
   return `
-    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+    <div class="flex flex-col gap-0.5 ${span}">
+      <label for="${id}" class="block text-[11px] font-medium text-gray-500 leading-tight">${label}</label>
       <input id="${id}" name="${id}" type="text"
              value="${escHtml(value || '')}"
              ${opts.readonly ? 'readonly' : ''}
              ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
-                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md
+                    focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1
                     ${opts.readonly ? 'cursor-default' : ''}
                     disabled:opacity-50">
-      ${opts.hint ? '<p class="text-xs text-gray-400">' + escHtml(opts.hint) + '</p>' : ''}
+      ${opts.hint ? '<p class="text-[10px] text-gray-400 leading-tight">' + escHtml(opts.hint) + '</p>' : ''}
     </div>`;
 }
 
 function fieldNumber(id, label, value, opts) {
   opts = opts || {};
+  const span = opts.colSpan ? 'col-span-2' : '';
   return `
-    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+    <div class="flex flex-col gap-0.5 ${span}">
+      <label for="${id}" class="block text-[11px] font-medium text-gray-500 leading-tight">${label}</label>
       <input id="${id}" name="${id}" type="number"
              value="${escHtml(String(value || ''))}"
              ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
              ${opts.min !== undefined ? 'min="' + opts.min + '"' : ''}
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
-                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
-      ${opts.hint ? '<p class="text-xs text-gray-400">' + escHtml(opts.hint) + '</p>' : ''}
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md
+                    focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1">
+      ${opts.hint ? '<p class="text-[10px] text-gray-400 leading-tight">' + escHtml(opts.hint) + '</p>' : ''}
     </div>`;
 }
 
 function fieldSelect(id, label, value, options, opts) {
   opts = opts || {};
+  const span = opts.colSpan ? 'col-span-2' : '';
   const optHtml = options.map(function(o) {
     const selected = String(o.value) === String(value || '') ? 'selected' : '';
     return `<option value="${escHtml(String(o.value))}" ${selected}>${escHtml(o.label)}</option>`;
   }).join('');
   return `
-    <div class="flex flex-col gap-1 ${opts.colSpan ? 'col-span-2' : ''}">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+    <div class="flex flex-col gap-0.5 ${span}">
+      <label for="${id}" class="block text-[11px] font-medium text-gray-500 leading-tight">${label}</label>
       <select id="${id}" name="${id}"
-              class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
-                     focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
-        <option value="">— выбрать —</option>
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md
+                     focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1">
+        <option value="">—</option>
         ${optHtml}
       </select>
     </div>`;
@@ -99,13 +102,16 @@ function fieldSelect(id, label, value, options, opts) {
 
 function fieldTextarea(id, label, value, opts) {
   opts = opts || {};
+  // По умолчанию textarea занимает 1 колонку — два textarea в ряд.
+  // Через opts.colSpan: true можно растянуть на 2 кол.
+  const span = opts.colSpan ? 'col-span-2' : '';
   return `
-    <div class="flex flex-col gap-1 col-span-2">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">${label}</label>
+    <div class="flex flex-col gap-0.5 ${span}">
+      <label for="${id}" class="block text-[11px] font-medium text-gray-500 leading-tight">${label}</label>
       <textarea id="${id}" name="${id}" rows="${opts.rows || 2}"
                 ${opts.placeholder ? 'placeholder="' + escHtml(opts.placeholder) + '"' : ''}
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
-                       focus:ring-blue-500 focus:border-blue-500 block w-full p-2 resize-none">${escHtml(value || '')}</textarea>
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md
+                       focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1 resize-none">${escHtml(value || '')}</textarea>
     </div>`;
 }
 
@@ -122,22 +128,22 @@ function fieldCity(id, label, value) {
     return '<option value="' + escHtml(c) + '">';
   }).join('');
   return `
-    <div class="flex flex-col gap-1">
-      <label for="${id}" class="block text-xs font-medium text-gray-500">
+    <div class="flex flex-col gap-0.5">
+      <label for="${id}" class="block text-[11px] font-medium text-gray-500 leading-tight">
         ${label}
         <span class="text-red-500 ml-0.5" title="Обязательное поле">*</span>
-        <span class="text-blue-400 font-normal ml-1" title="Используется для определения часового пояса в расписании">→ TZ</span>
+        <span class="text-blue-400 font-normal ml-1" title="Часовой пояс">→ TZ</span>
       </label>
       <input id="${id}" name="${id}" type="text" list="city-list"
              value="${escHtml(value || '')}"
-             placeholder="Начните вводить город..."
+             placeholder="Город..."
              autocomplete="off"
              required
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg
-                    focus:ring-blue-500 focus:border-blue-500 block w-full p-2">
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md
+                    focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1">
       <datalist id="city-list">${opts}</datalist>
-      <p id="${id}-error" class="hidden text-xs text-red-500 mt-0.5">Укажите город клиента</p>
-      <p id="${id}-tz-warn" class="hidden text-xs text-amber-500 mt-0.5">Город не найден в справочнике — часовой пояс не будет определён</p>
+      <p id="${id}-error" class="hidden text-[10px] text-red-500">Укажите город клиента</p>
+      <p id="${id}-tz-warn" class="hidden text-[10px] text-amber-500">Город не найден в справочнике</p>
     </div>`;
 }
 
@@ -185,21 +191,34 @@ const OPTS_CHILDREN = [
 
 // ─── Инициализация формы ─────────────────────────────────────────────────────
 
+// Устанавливает CSS-классы на body-див блока (двухколоночный grid)
+function _setGrid(id) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'px-3 py-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs';
+}
+
 function initForm(lead) {
   const f   = lead;
   const fio = [f.LASTNAME, f.NAME, f.SECONDNAME].filter(Boolean).join(' ');
 
-  // БЛОК 1: Персональные данные (+ город → TZ)
+  // БЛОК 1: Персональные данные
+  // Раскладка (9 полей, 2 колонки):
+  //   Строка 1: ФИО (на 2 кол.) | Место работы (на 2 кол.)
+  //   Строка 2: Город | Семейное положение
+  //   Строка 3: Дети | Совм. имущество
+  //   Строка 4: Судимости | ООО
+  //   Строка 5: ИП | —
+  _setGrid('personal-body');
   document.getElementById('personal-body').innerHTML =
-    fieldText   ('f-fio',            'ФИО клиента',         fio,                           { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
+    fieldText   ('f-fio',            'ФИО клиента',          fio,                          { readonly: true, colSpan: true, hint: 'Автозаполнение из лида' }) +
+    fieldText   ('f-workplace',       'Место работы',         f.UF_CRM_KC_WORKPLACE,        { colSpan: true, placeholder: 'Наименование организации' }) +
     fieldCity   ('f-UF_CRM_KC_CLIENT_CITY', 'Город клиента', f.UF_CRM_KC_CLIENT_CITY) +
-    fieldText   ('f-workplace',      'Место работы',        f.UF_CRM_KC_WORKPLACE,         { placeholder: 'Наименование организации' }) +
-    fieldSelect ('f-marital',        'Семейное положение',  f.UF_CRM_KC_MARITAL_STATUS,    OPTS_MARITAL) +
-    fieldSelect ('f-children',       'Дети',                f.UF_CRM_KC_CHILDREN,          OPTS_CHILDREN) +
-    fieldSelect ('f-joint-property', 'Совместное имущество', f.UF_CRM_KC_JOINT_PROPERTY,   OPTS_YES_NO) +
-    fieldSelect ('f-criminal',       'Судимости',           f.UF_CRM_KC_CRIMINAL,          OPTS_YES_NO) +
-    fieldSelect ('f-ooo',            'ООО',                 f.UF_CRM_KC_OOO,               OPTS_YES_NO) +
-    fieldSelect ('f-ip',             'ИП',                  f.UF_CRM_KC_IP,                OPTS_YES_NO);
+    fieldSelect ('f-marital',         'Семейное положение', f.UF_CRM_KC_MARITAL_STATUS,   OPTS_MARITAL) +
+    fieldSelect ('f-children',        'Дети',               f.UF_CRM_KC_CHILDREN,         OPTS_CHILDREN) +
+    fieldSelect ('f-joint-property',  'Совм. имущество',   f.UF_CRM_KC_JOINT_PROPERTY,   OPTS_YES_NO) +
+    fieldSelect ('f-criminal',        'Судимости',          f.UF_CRM_KC_CRIMINAL,         OPTS_YES_NO) +
+    fieldSelect ('f-ooo',             'ООО',                f.UF_CRM_KC_OOO,              OPTS_YES_NO) +
+    fieldSelect ('f-ip',              'ИП',                 f.UF_CRM_KC_IP,               OPTS_YES_NO);
 
   // Обработчик поля города — обновляет TZ в расписании сразу при вводе
   const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
@@ -219,29 +238,34 @@ function initForm(lead) {
     cityEl.addEventListener('input',  _onCityChange);
   }
 
-  // БЛОК 2: Финансовые данные
+  // БЛОК 2: Финансовые данные (5 полей, 2 кол.)
+  // Долг | Платёж | Оф. доход | Неоф. доход | Зарп. карта
+  _setGrid('finance-body');
   document.getElementById('finance-body').innerHTML =
-    fieldNumber ('f-debt-total',        'Общая сумма долга, ₽',   f.UF_CRM_KC_DEBT_TOTAL,        { placeholder: '0', min: 0 }) +
-    fieldNumber ('f-monthly-payment',   'Ежемесячный платёж, ₽',  f.UF_CRM_KC_MONTHLY_PAYMENT,   { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-income-official',   'Официальный доход',      f.UF_CRM_KC_INCOME_OFFICIAL,   OPTS_INCOME_OFFICIAL) +
-    fieldNumber ('f-income-unofficial', 'Неофициальный доход, ₽', f.UF_CRM_KC_INCOME_UNOFFICIAL, { placeholder: '0', min: 0 }) +
-    fieldSelect ('f-salary-card',       'Зарплатная карта',       f.UF_CRM_KC_SALARY_CARD,       OPTS_SALARY_CARD);
+    fieldNumber ('f-debt-total',        'Долг, ₽',              f.UF_CRM_KC_DEBT_TOTAL,        { placeholder: '0', min: 0 }) +
+    fieldNumber ('f-monthly-payment',   'Платёж/мес, ₽',         f.UF_CRM_KC_MONTHLY_PAYMENT,   { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-income-official',   'Офиц. доход',          f.UF_CRM_KC_INCOME_OFFICIAL,   OPTS_INCOME_OFFICIAL) +
+    fieldNumber ('f-income-unofficial', 'Неофиц. доход, ₽',     f.UF_CRM_KC_INCOME_UNOFFICIAL, { placeholder: '0', min: 0 }) +
+    fieldSelect ('f-salary-card',       'Зарпл. карта',          f.UF_CRM_KC_SALARY_CARD,       OPTS_SALARY_CARD);
 
-  // БЛОК 3: Кредитная история
+  // БЛОК 3: Кредитная история (6 полей, 2 кол.)
+  // Кредиторы (full) | Залог | Просрочки | ФССП | Имущество | Сделки
+  _setGrid('credit-body');
   document.getElementById('credit-body').innerHTML =
     fieldText   ('f-creditors',  'Кредиторы',  f.UF_CRM_KC_CREDITORS,  { colSpan: true, placeholder: 'Банки, МФО...' }) +
     fieldSelect ('f-collateral', 'Залог',      f.UF_CRM_KC_COLLATERAL, OPTS_YES_NO) +
-    fieldText   ('f-overdue',    'Просрочки',  f.UF_CRM_KC_OVERDUE,    { placeholder: 'кол-во дней / описание' }) +
+    fieldText   ('f-overdue',    'Просрочки',  f.UF_CRM_KC_OVERDUE,    { placeholder: 'дней / описание' }) +
     fieldSelect ('f-fssp',       'ФССП',       f.UF_CRM_KC_FSSP,       OPTS_YES_NO) +
     fieldSelect ('f-property',   'Имущество',  f.UF_CRM_KC_PROPERTY,   OPTS_YES_NO) +
     fieldSelect ('f-deals',      'Сделки',     f.UF_CRM_KC_DEALS,      OPTS_YES_NO);
 
-  // БЛОК 4: Заметки менеджера
+  // БЛОК 4: Заметки менеджера (4 textarea, 2 кол.)
+  _setGrid('manager-body');
   document.getElementById('manager-body').innerHTML =
-    fieldTextarea('f-km-exclusion',  'Исключение из КМ', f.UF_CRM_KC_KM_EXCLUSION,  { placeholder: 'Причина исключения...' }) +
-    fieldTextarea('f-main-pain',     'Основная боль',    f.UF_CRM_KC_MAIN_PAIN,     { placeholder: 'Главная проблема клиента...' }) +
+    fieldTextarea('f-km-exclusion',  'Исключение из КМ', f.UF_CRM_KC_KM_EXCLUSION,  { placeholder: 'Причина...' }) +
+    fieldTextarea('f-main-pain',     'Основная боль',    f.UF_CRM_KC_MAIN_PAIN,     { placeholder: 'Главная проблема...' }) +
     fieldTextarea('f-objections',    'Возражения',       f.UF_CRM_KC_OBJECTIONS,    { placeholder: 'Возражения клиента...' }) +
-    fieldTextarea('f-extra-comment', 'Доп. комментарий', f.UF_CRM_KC_EXTRA_COMMENT, { placeholder: 'Дополнительная информация...' });
+    fieldTextarea('f-extra-comment', 'Доп. комментарий', f.UF_CRM_KC_EXTRA_COMMENT, { placeholder: 'Доп. информация...' });
 
   updateProgress();
 }
