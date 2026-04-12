@@ -61,7 +61,8 @@ BX24.init(function () {
       const form = document.getElementById('anketa-form');
       if (form) {
         form.classList.remove('hidden');
-        form.classList.add('flex');
+        // flex-col уже прописан в HTML-классах, добавляем только display
+        form.style.display = 'flex';
       }
 
       // ── Порядок инициализации важен ──────────────────────────────────────

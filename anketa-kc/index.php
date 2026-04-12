@@ -120,8 +120,8 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
       </div>
 
       <!-- Форма: блоки сложены ВЕРТИКАЛЬНО, вертикальный скролл, каждый блок на всю ширину -->
-      <form id="anketa-form" class="hidden flex-1 overflow-y-auto overflow-x-hidden" novalidate>
-        <div class="flex flex-col gap-3 px-4 py-3">
+      <form id="anketa-form" class="hidden flex-col flex-1 w-full overflow-y-auto overflow-x-hidden" novalidate>
+        <div class="flex flex-col gap-3 px-4 py-3 w-full">
 
           <!-- Блок 1: Персональные данные -->
           <div class="bg-white border border-gray-200 rounded-lg shadow-sm">

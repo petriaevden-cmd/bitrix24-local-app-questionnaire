@@ -343,7 +343,7 @@ function renderTable() {
         btn.dataset.utcMs  = slot.utcMs;
         btn.className =
           'slot-btn w-full rounded-md bg-green-50 border border-green-200 text-green-700 ' +
-          'text-[11px] font-medium px-1.5 py-1 hover:bg-green-600 hover:text-white hover:border-green-600 ' +
+          'text-[11px] font-medium px-1.5 py-1 hover:bg-green-100 hover:text-gray-900 hover:border-green-400 ' +
           'transition-colors whitespace-nowrap tabular-nums';
         const mpTime = fmtHour(slot.utcMs, mp.utc);
         btn.textContent = mpTime;
