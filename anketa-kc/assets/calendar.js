@@ -196,22 +196,26 @@ function buildFreeSlots(mp, day, busy) {
   return slots;
 }
 
-// ── Сбор всех уникальных часов для заголовка таблицы ─────────────────────────
-// Баг 1 fix: ключ в hoursSet — реальный UTC-timestamp слота (не UTC минус смещение МП).
-// col.utcMs теперь является настоящим UTC, что позволяет корректно вычислять
-// время клиента как fmtHour(col.utcMs, _clientUtc).
+// ── Сбор всех уникальных UTC-слотов для заголовка таблицы ───────────────────
+// Заголовок колонки = время клиента (UTC клиента).
+// Если город клиента неизвестен — показываем UTC.
+// Кнопка в строке МП = время конкретного МП (рендерится в renderTable).
 function collectAllHours(slotsMap) {
-  const hoursSet = {};
+  const utcSet = {}; // utcMs → true, для дедупликации
   Object.keys(slotsMap).forEach(function (calId) {
-    const mp = MP_CALENDARS[calId];
     (slotsMap[calId] || []).forEach(function (slot) {
-      // Ключ = реальный UTC timestamp слота
-      hoursSet[slot.utcMs] = fmtHour(slot.utcMs, mp.utc);
+      utcSet[slot.utcMs] = true;
     });
   });
-  return Object.keys(hoursSet).sort(function (a, b) { return a - b; }).map(function (k) {
-    return { utcMs: parseInt(k, 10), label: hoursSet[k] };
-  });
+  return Object.keys(utcSet)
+    .map(function (k) { return parseInt(k, 10); })
+    .sort(function (a, b) { return a - b; })
+    .map(function (utcMs) {
+      // Заголовок = время клиента; если TZ клиента неизвестен — UTC
+      const displayOffset = (_clientUtc !== null) ? _clientUtc : 0;
+      const label = fmtHour(utcMs, displayOffset);
+      return { utcMs: utcMs, label: label };
+    });
 }
 
 // ── Рендер таблицы ────────────────────────────────────────────────────────────
@@ -266,46 +270,30 @@ function renderTable() {
   table.className = 'w-full text-xs border-collapse';
 
   // ── THEAD ─────────────────────────────────────────────────────────────────
+  // Заголовок колонки = время клиента (или UTC если город не указан).
+  // Кнопка в строке МП показывает время этого МП.
   const thead  = document.createElement('thead');
   const trHead = document.createElement('tr');
 
   const thCorner = document.createElement('th');
   thCorner.className = 'sticky left-0 z-10 bg-gray-50 text-left py-2 px-3 font-semibold text-gray-600 border-b border-r border-gray-200 whitespace-nowrap min-w-[64px]';
-  thCorner.innerHTML = 'МП';
+  // Подпись угловой ячейки — указываем чьё время в заголовке
+  thCorner.innerHTML = hasClientTz
+    ? 'МП<div class="text-[10px] font-normal text-blue-400 leading-tight mt-0.5">UTC+' + _clientUtc + '</div>'
+    : 'МП<div class="text-[10px] font-normal text-gray-400 leading-tight mt-0.5">UTC</div>';
   trHead.appendChild(thCorner);
 
   allHours.forEach(function (col) {
     const th = document.createElement('th');
-    th.className = 'py-2 px-2 font-semibold text-gray-600 border-b border-gray-200 text-center whitespace-nowrap min-w-[80px]';
-    if (hasClientTz) {
-      // Баг 1 fix: col.utcMs теперь реальный UTC — fmtHour(col.utcMs, _clientUtc) корректен
-      const clientTime = fmtHour(col.utcMs, _clientUtc);
-      th.innerHTML =
-        '<span class="block font-mono text-gray-800">' + escHtml(col.label) + '</span>' +
-        '<span class="block font-mono text-blue-500 font-normal text-[10px]">' + escHtml(clientTime) + '</span>';
-    } else {
-      th.innerHTML = '<span class="font-mono">' + escHtml(col.label) + '</span>';
-    }
+    th.className = 'py-2 px-2 font-semibold border-b border-gray-200 text-center whitespace-nowrap min-w-[72px]';
+    // col.label уже содержит время клиента (или UTC) — одно значение
+    th.innerHTML = hasClientTz
+      ? '<span class="font-mono text-blue-600">' + escHtml(col.label) + '</span>'
+      : '<span class="font-mono text-gray-600">' + escHtml(col.label) + '</span>';
     trHead.appendChild(th);
   });
 
   thead.appendChild(trHead);
-
-  if (hasClientTz) {
-    const trTz = document.createElement('tr');
-    const thTzCorner = document.createElement('th');
-    thTzCorner.className = 'sticky left-0 z-10 bg-gray-50 border-b border-r border-gray-200';
-    trTz.appendChild(thTzCorner);
-    const tdTz = document.createElement('td');
-    tdTz.colSpan = allHours.length;
-    tdTz.className = 'py-1 px-2 border-b border-gray-200 bg-gray-50 text-gray-400 text-[10px]';
-    tdTz.innerHTML =
-      '<span class="text-gray-500">время МП</span> / ' +
-      '<span class="text-blue-400">время клиента (UTC+' + _clientUtc + ')</span>';
-    trTz.appendChild(tdTz);
-    thead.appendChild(trTz);
-  }
-
   table.appendChild(thead);
 
   // ── TBODY ─────────────────────────────────────────────────────────────────
@@ -341,8 +329,12 @@ function renderTable() {
           'w-full rounded-md bg-green-50 border border-green-200 text-green-700 ' +
           'text-[11px] font-medium px-1.5 py-1 hover:bg-green-600 hover:text-white hover:border-green-600 ' +
           'transition-colors whitespace-nowrap tabular-nums';
-        btn.textContent = fmtHour(slot.utcMs, mp.utc);
-        btn.title       = 'Записать на ' + fmtHour(slot.utcMs, mp.utc) + ' (UTC+' + mp.utc + ')';
+        const mpTime = fmtHour(slot.utcMs, mp.utc);
+        btn.textContent = mpTime;
+        // Подсказка: время МП + время клиента если известен
+        btn.title = hasClientTz
+          ? 'Время МП: ' + mpTime + ' (UTC+' + mp.utc + ')\nВремя клиента: ' + fmtHour(slot.utcMs, _clientUtc) + ' (UTC+' + _clientUtc + ')'
+          : 'Записать на ' + mpTime + ' (UTC+' + mp.utc + ')';
         btn.addEventListener('click', function () { selectSlot(calId, slot); });
         td.appendChild(btn);
       } else {

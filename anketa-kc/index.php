@@ -119,59 +119,61 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
         </div>
       </div>
 
-      <!-- Форма -->
-      <form id="anketa-form" class="hidden flex-1 panel-scroll px-4 pb-4 space-y-3" novalidate>
+      <!-- Форма: блоки расположены ГОРИЗОНТАЛЬНО, горизонтальный скролл -->
+      <form id="anketa-form" class="hidden flex-1 overflow-x-auto overflow-y-hidden" novalidate>
+        <div class="flex flex-row gap-3 px-4 py-3 h-full" style="min-width: max-content;">
 
-        <!-- Блок 1: Персональные данные -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">1</span>
-            <span class="text-xs font-semibold text-gray-700">Персональные данные</span>
+          <!-- Блок 1: Персональные данные -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">1</span>
+              <span class="text-xs font-semibold text-gray-700">Персональные</span>
+            </div>
+            <div id="personal-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
           </div>
-          <div id="personal-body" class="px-3 py-3 grid grid-cols-2 gap-2 text-xs"></div>
+
+          <!-- Блок 2: Финансовые данные -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">2</span>
+              <span class="text-xs font-semibold text-gray-700">Финансы</span>
+            </div>
+            <div id="finance-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+          </div>
+
+          <!-- Блок 3: Кредитная история -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:200px; min-width:200px;">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">3</span>
+              <span class="text-xs font-semibold text-gray-700">Кредитная</span>
+            </div>
+            <div id="credit-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+          </div>
+
+          <!-- Блок 4: Заметки менеджера -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:220px; min-width:220px;">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">4</span>
+              <span class="text-xs font-semibold text-gray-700">Заметки</span>
+            </div>
+            <div id="manager-body" class="px-3 py-3 flex flex-col gap-2 text-xs overflow-y-auto flex-1"></div>
+          </div>
+
+          <!-- Блок 5: Запись на встречу -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col" style="width:200px; min-width:200px;">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg shrink-0">
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold shrink-0">5</span>
+              <span class="text-xs font-semibold text-gray-700">Запись</span>
+            </div>
+            <div id="booking-body" class="px-3 py-3 text-xs text-gray-400 overflow-y-auto flex-1">
+              <span class="inline-flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Выберите слот справа →
+              </span>
+            </div>
+          </div>
+
         </div>
-
-        <!-- Блок 2: Финансовые данные -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">2</span>
-            <span class="text-xs font-semibold text-gray-700">Финансовые данные</span>
-          </div>
-          <div id="finance-body" class="px-3 py-3 grid grid-cols-2 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Блок 3: Кредитная история -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">3</span>
-            <span class="text-xs font-semibold text-gray-700">Кредитная история</span>
-          </div>
-          <div id="credit-body" class="px-3 py-3 grid grid-cols-2 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Блок 4: Заметки менеджера -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">4</span>
-            <span class="text-xs font-semibold text-gray-700">Заметки менеджера</span>
-          </div>
-          <div id="manager-body" class="px-3 py-3 grid grid-cols-1 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Блок 5: Запись на встречу -->
-        <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div class="w-full flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold shrink-0">5</span>
-            <span class="text-xs font-semibold text-gray-700">Запись на встречу</span>
-          </div>
-          <div id="booking-body" class="px-3 py-3 text-xs text-gray-400">
-            <span class="inline-flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              Выберите слот в расписании справа →
-            </span>
-          </div>
-        </div>
-
       </form>
 
       <!-- Футер -->
@@ -194,33 +196,15 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
     <!-- ════ Правая колонка: Расписание + Фишки (45%) ════ -->
     <div class="flex flex-col flex-1 bg-gray-50">
 
-      <!-- Табы (Flowbite Tabs) -->
-      <div class="bg-white border-b border-gray-200 px-3 pt-2 shrink-0">
-        <ul class="flex text-xs font-medium" id="right-tabs" role="tablist">
-          <li class="mr-1" role="presentation">
-            <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-t-lg border-b-2 border-blue-600 text-blue-600"
-                    id="tab-schedule-btn" data-tabs-target="#tab-schedule" type="button" role="tab"
-                    aria-controls="tab-schedule" aria-selected="true">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              Расписание
-            </button>
-          </li>
-          <li role="presentation">
-            <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-t-lg border-b-2 border-transparent text-gray-400 hover:text-gray-600"
-                    id="tab-future-btn" data-tabs-target="#tab-future" type="button" role="tab"
-                    aria-controls="tab-future" aria-selected="false">
-              Фишки
-              <span class="ml-1 text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">скоро</span>
-            </button>
-          </li>
-        </ul>
+      <!-- Правая панель: только Расписание, без табов -->
+      <div class="bg-white border-b border-gray-200 px-4 py-2 shrink-0 flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span class="text-xs font-semibold text-gray-700">Расписание МП</span>
       </div>
 
-      <!-- Контент табов -->
-      <div id="right-tab-content" class="flex-1 panel-scroll">
-
-        <!-- Таб: Расписание -->
-        <div id="tab-schedule" role="tabpanel" class="p-3 space-y-2">
+      <!-- Контент правой панели -->
+      <div class="flex-1 panel-scroll">
+        <div class="p-3 space-y-2"><!-- внешний wrapper для паддинга -->
 
           <!-- Навигация по дням + кнопка обновления -->
           <div class="bg-white border border-gray-200 rounded-lg px-3 py-2">
@@ -253,17 +237,8 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
           <!-- Статус бронирования -->
           <div id="booking-status" class="hidden"></div>
 
-        </div>
-
-        <!-- Таб: Фишки -->
-        <div id="tab-future" role="tabpanel" class="hidden p-3">
-          <div class="border border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-            <p class="text-xs text-gray-400">Здесь появятся дополнительные инструменты:<br>скоринг, документы, история, подсказки.</p>
-          </div>
-        </div>
-
-      </div>
+        </div><!-- /p-3 wrapper -->
+      </div><!-- /panel-scroll -->
     </div>
     <!-- ════ Конец правой колонки ════ -->
 
