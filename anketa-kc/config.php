@@ -12,9 +12,6 @@ define('PORTAL_URL', 'https://your-portal.bitrix24.ru');
 define('APP_CLIENT_ID',     'local.XXXXXXXXXXX');
 define('APP_CLIENT_SECRET', 'XXXXXXXXXXXXXXXXXXX');
 
-// ID отдела МКЦ (используется для user.get в app.js)
-define('SALES_DEPT_ID', 42);
-
 // Шаг слота — только 60 минут (часовые слоты)
 define('SLOT_DURATION_MIN', 60);
 
