@@ -1,21 +1,21 @@
 {
-  "slug": "anketa-kc",
+  "slug": "anketa-kc-mp",
   "version": "1.0.0",
   "name": {
-    "ru": "Анкета КЦ",
-    "en": "KC Questionnaire"
+    "ru": "Анкета КЦ и МП",
+    "en": "KC and MP Questionnaire"
   },
   "description": {
     "ru": "Локальное приложение для заполнения анкеты клиента в карточке лида CRM"
   },
-  "install_url": "https://your-server.ru/anketa-kc/install.php",
-  "handler_url": "https://your-server.ru/anketa-kc/index.php",
+  "install_url": "https://crm.yurclick.com/anketa-kc/install.php",
+  "handler_url": "https://crm.yurclick.com/anketa-kc/index.php",
   "scope": ["crm", "calendar", "user", "im", "placement"],
   "placements": [
     {
       "placement": "CRM_LEAD_DETAIL_TAB",
-      "handler": "https://your-server.ru/anketa-kc/index.php",
-      "title": "Анкета КЦ"
+      "handler": "https://crm.yurclick.com/anketa-kc/index.php",
+      "title": "Анкета КЦ и МП"
     }
   ]
 }
