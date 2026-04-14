@@ -6,7 +6,7 @@
  */
 
 // URL вашего портала Bitrix24
-define('PORTAL_URL', 'https://your-portal.bitrix24.ru');
+define('PORTAL_URL', 'https://crm.yurclick.com');
 
 // OAuth 2.0 — данные локального приложения
 define('APP_CLIENT_ID',     'local.XXXXXXXXXXX');
@@ -22,7 +22,7 @@ define('SLOT_HORIZON_DAYS', 7);
 // автообновление не используется.
 
 // Минимум свободных слотов на день; если меньше — автопереход на следующий день
-define('MIN_SLOTS_PER_DAY', 3);
+define('MIN_SLOTS_PER_DAY', 1);
 
 // Диапазон «разумного» времени клиента (по его TZ)
 define('CLIENT_HOUR_MIN', 9);
