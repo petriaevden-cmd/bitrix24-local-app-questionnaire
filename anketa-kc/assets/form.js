@@ -4,7 +4,7 @@
  * Отвечает за:
  *   1. Генерацию HTML-разметки полей формы (рендер через Tailwind CSS 4 + Flowbite).
  *   2. Заполнение всех 5 блоков формы данными из текущего лида Bitrix24.
- *   3. Валидацию обязательных полей перед сохранением.
+ *   3. Валидацию 11 обязательных полей перед сохранением (REQUIRED_FIELDS).
  *   4. Сбор значений всех полей формы в единый объект.
  *   5. Сохранение данных в CRM через API Bitrix24 (crm.lead.update).
  *   6. Запись итогового комментария в таймлайн лида (crm.timeline.comment.add).
@@ -697,58 +697,136 @@ document.addEventListener('change', function(e) {
   if (e.target.closest('#anketa-form')) updateProgress();
 });
 
-// ─── Валидация города ────────────────────────────────────────────────────────
+// ─── Валидация полей ─────────────────────────────────────────────────────────
 
 /**
- * showCityError — визуально отмечает поле «Город» как ошибочное и показывает сообщение.
+ * REQUIRED_FIELDS — массив описаний 10 обязательных полей формы.
  *
- * Используется в validateForm(), если менеджер нажал «Сохранить» с пустым городом.
- * Применяет три изменения:
- *   1. Добавляет красную рамку к полю (border-red-500).
- *   2. Добавляет красную подсветку фокуса (focus:ring-red-500, focus:border-red-500).
- *   3. Показывает скрытый текст ошибки (#f-UF_CRM_KC_CLIENT_CITY-error).
+ * Каждый элемент содержит:
+ *   key   — ключ в объекте formData (возвращает collectFormData())
+ *   elId  — HTML id элемента поля (input / select) для фокуса и подсветки ошибки
+ *   label — текст сообщения об ошибке, который увидит менеджер
+ *
+ * Порядок совпадает с порядком блоков формы — при ошибке фокус
+ * переводится на ПЕРВОЕ незаполненное поле (сверху вниз).
+ *
+ * Этот список соответствует полям с MANDATORY: 'Y' в install.php:
+ *   KC_FULLNAME, KC_MARITAL_STATUS, KC_CHILDREN, KC_JOINT_PROPERTY,
+ *   KC_CRIMINAL, KC_OOO, KC_IP, KC_DEBT_TOTAL, KC_PROPERTY, KC_DEALS.
+ * Город (KC_CLIENT_CITY) проверяется отдельно — без него невозможно
+ * определить часовой пояс для расписания.
  */
-function showCityError() {
-  // Находим элемент поля города.
-  const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
-  // Находим элемент с текстом ошибки.
-  const errEl  = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-error');
+var REQUIRED_FIELDS = [
+  { key: 'clientCity',    elId: 'f-UF_CRM_KC_CLIENT_CITY', label: 'Укажите город клиента' },
+  { key: 'fio',           elId: 'f-fio',                   label: 'ФИО не заполнено' },
+  { key: 'maritalStatus', elId: 'f-marital',               label: 'Укажите семейное положение' },
+  { key: 'children',      elId: 'f-children',              label: 'Укажите количество детей' },
+  { key: 'jointProperty', elId: 'f-joint-property',        label: 'Укажите совместное имущество' },
+  { key: 'criminal',      elId: 'f-criminal',              label: 'Укажите наличие судимостей' },
+  { key: 'ooo',           elId: 'f-ooo',                   label: 'Укажите наличие ООО' },
+  { key: 'ip',            elId: 'f-ip',                    label: 'Укажите наличие ИП' },
+  { key: 'debtTotal',     elId: 'f-debt-total',            label: 'Укажите сумму долга' },
+  { key: 'property',      elId: 'f-property',              label: 'Укажите наличие имущества' },
+  { key: 'deals',         elId: 'f-deals',                 label: 'Укажите наличие сделок' }
+];
 
-  // Добавляем CSS-классы красной рамки к полю (border-red-500 = красная граница 1px).
-  if (cityEl) cityEl.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+/**
+ * _showFieldError(elId, msg) — универсальная функция: помечает любое поле
+ * формы как ошибочное (красная рамка + текст ошибки под полем).
+ *
+ * ЛОГИКА:
+ *   1. Находит DOM-элемент поля по его id (elId).
+ *   2. Добавляет классы красной рамки (border-red-500, focus:ring-red-500, focus:border-red-500).
+ *   3. Ищет элемент ошибки с id = elId + '-error'.
+ *      - Если найден (город — у него <p id="...-error"> уже есть в HTML) → показываем его.
+ *      - Если НЕ найден → создаём <p> динамически и вставляем после поля.
+ *   4. Устанавливает текст ошибки (msg).
+ *
+ * @param {string} elId — HTML id поля (например 'f-marital').
+ * @param {string} msg  — Текст сообщения об ошибке (например 'Укажите семейное положение').
+ */
+function _showFieldError(elId, msg) {
+  var fieldEl = document.getElementById(elId);
+  if (fieldEl) {
+    // Добавляем красную рамку к полю.
+    fieldEl.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+  }
 
-  // Показываем блок с текстом «Укажите город клиента» (убираем класс hidden).
-  if (errEl)  errEl.classList.remove('hidden');
+  // Ищем или создаём элемент ошибки.
+  var errId = elId + '-error';
+  var errEl = document.getElementById(errId);
+  if (!errEl && fieldEl) {
+    // Элемент ошибки ещё не существует — создаём динамически.
+    errEl = document.createElement('p');
+    errEl.id = errId;
+    errEl.className = 'text-[10px] text-red-500'; // Мелкий красный текст.
+    // Вставляем сразу после поля (input/select) внутри его родительского <div>.
+    fieldEl.parentNode.insertBefore(errEl, fieldEl.nextSibling);
+  }
+  if (errEl) {
+    errEl.textContent = msg;           // Устанавливаем текст ошибки.
+    errEl.classList.remove('hidden');   // Показываем (если был скрыт).
+  }
 }
 
 /**
- * clearCityError — сбрасывает визуальную ошибку поля «Город».
+ * _clearFieldError(elId) — универсальная функция: снимает ошибку с любого поля.
  *
- * Вызывается в двух случаях:
- *   1. Из _onCityChange() — при любом изменении/вводе в поле города
- *      (менеджер начал исправлять ошибку — убираем предупреждение немедленно).
- *   2. Из validateForm() — перед сохранением, если город заполнен корректно.
+ * ЛОГИКА:
+ *   1. Убирает красную рамку с DOM-элемента поля.
+ *   2. Скрывает элемент ошибки (если он существует).
+ *
+ * @param {string} elId — HTML id поля (например 'f-marital').
+ */
+function _clearFieldError(elId) {
+  var fieldEl = document.getElementById(elId);
+  if (fieldEl) {
+    // Убираем красную рамку — возвращаем стандартный стиль.
+    fieldEl.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+  }
+
+  var errEl = document.getElementById(elId + '-error');
+  if (errEl) {
+    errEl.classList.add('hidden'); // Скрываем текст ошибки.
+  }
+}
+
+/**
+ * _clearAllFieldErrors() — сбрасывает ошибки со ВСЕХ обязательных полей.
+ *
+ * Вызывается в начале validateForm() перед новой проверкой,
+ * чтобы убрать ошибки с полей, которые менеджер уже исправил.
+ */
+function _clearAllFieldErrors() {
+  REQUIRED_FIELDS.forEach(function (rf) {
+    _clearFieldError(rf.elId);
+  });
+}
+
+/**
+ * showCityError — обёртка для обратной совместимости: помечает поле «Город» как ошибочное.
+ *
+ * Используется в _onCityChange() (form.js) и внешнем коде.
+ * Внутри делегирует в универсальную _showFieldError().
+ */
+function showCityError() {
+  _showFieldError('f-UF_CRM_KC_CLIENT_CITY', 'Укажите город клиента');
+}
+
+/**
+ * clearCityError — обёртка для обратной совместимости: снимает ошибку с поля «Город».
  *
  * Также скрывает жёлтое предупреждение TZ (баг 7 fix):
  * при очистке ошибки сбрасываем и предупреждение о неизвестном городе.
  */
 function clearCityError() {
-  // Находим элемент поля города.
-  const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
-  // Находим элемент с текстом ошибки.
-  const errEl  = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-error');
-
-  // Убираем CSS-классы красной рамки с поля — возвращаем стандартный стиль.
-  if (cityEl) cityEl.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
-
-  // Скрываем блок с текстом ошибки (добавляем класс hidden).
-  if (errEl)  errEl.classList.add('hidden');
+  _clearFieldError('f-UF_CRM_KC_CLIENT_CITY');
 
   // Баг 7 fix: предупреждение TZ скрываем вместе с ошибкой валидации.
   // Это нужно, чтобы при нажатии «Сбросить» или при начале нового ввода
   // пропадали ОБА предупреждения одновременно.
-  const warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
-  if (warnEl) warnEl.classList.add('hidden'); // Скрываем жёлтое предупреждение о неизвестном городе
+  var warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
+  if (warnEl) warnEl.classList.add('hidden'); // Скрываем жёлтое предупреждение о неизвестном городе.
 }
 
 // ─── Сбор данных формы ───────────────────────────────────────────────────────
@@ -811,44 +889,59 @@ function collectFormData() {
 /**
  * validateForm — проверяет корректность заполнения формы перед сохранением.
  *
- * В текущей версии проверяется только одно обязательное поле — «Город клиента».
- * Без города невозможно определить часовой пояс клиента для расписания,
- * поэтому сохранение без города заблокировано.
+ * Проверяет ВСЕ 10+1 обязательных полей из массива REQUIRED_FIELDS:
+ *   Город (KC_CLIENT_CITY) — без него невозможен расчёт TZ.
+ *   ФИО (KC_FULLNAME), Семейное положение, Дети, Совм. имущество,
+ *   Судимости, ООО, ИП — персональные данные.
+ *   Сумма долга (KC_DEBT_TOTAL) — финансовые данные.
+ *   Имущество (KC_PROPERTY), Сделки (KC_DEALS) — кредитная история.
  *
- * (Исправления 2.C + 5.A: валидация города перед отправкой в Bitrix24 API.)
+ * Эти 10+1 полей совпадают с MANDATORY: 'Y' в install.php + город.
  *
  * ПОРЯДОК РАБОТЫ:
- *   1. Проверяет formData.clientCity — если пустой:
- *      a. Вызывает showCityError() — красная рамка + текст ошибки.
- *      b. Переводит фокус на поле города (cityEl.focus()), чтобы менеджер сразу видел проблему.
- *      c. Возвращает false — сохранение прерывается.
- *   2. Если город заполнен:
- *      a. Вызывает clearCityError() — убирает ошибку (на случай если она была).
- *      b. Возвращает true — можно сохранять.
+ *   1. Сбрасывает все предыдущие ошибки через _clearAllFieldErrors().
+ *   2. Перебирает REQUIRED_FIELDS: для каждого пустого поля вызывает _showFieldError().
+ *   3. Фокусирует курсор на ПЕРВОМ пустом обязательном поле.
+ *   4. Возвращает true (всё заполнено) или false (есть пустые).
  *
  * @param {object} formData — Объект данных формы из collectFormData().
  * @returns {boolean} — true если форма прошла валидацию, false если есть ошибки.
  */
 function validateForm(formData) {
-  // Проверяем, что поле города не пустое.
-  // formData.clientCity — строка (возможно пустая '') после trim() в collectFormData().
-  if (!formData.clientCity) {
-    // Показываем визуальную ошибку: красная рамка и текст «Укажите город клиента».
-    showCityError();
+  // Сбрасываем все ошибки с прошлой попытки, чтобы показать только актуальные.
+  _clearAllFieldErrors();
 
-    // Переводим курсор на поле города, чтобы менеджер сразу увидел проблему.
-    const cityEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY');
-    if (cityEl) cityEl.focus();
+  // Также сбрасываем жёлтое предупреждение TZ — оно управляется отдельно.
+  var warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
+  if (warnEl) warnEl.classList.add('hidden');
 
-    // Возвращаем false — блокируем дальнейшее сохранение.
-    return false;
+  // Переменная для запоминания первого пустого поля (для фокуса).
+  var firstEmptyElId = null;
+  // Флаг валидности: true, пока все поля заполнены.
+  var isValid = true;
+
+  // Перебираем все обязательные поля и проверяем каждое.
+  REQUIRED_FIELDS.forEach(function (rf) {
+    // formData[rf.key] — значение поля после trim() из collectFormData().
+    // Пустая строка '' или undefined считается «не заполнено».
+    if (!formData[rf.key]) {
+      // Показываем ошибку: красная рамка + текст под полем.
+      _showFieldError(rf.elId, rf.label);
+
+      // Запоминаем первое пустое поле — фокус переведём на него.
+      if (!firstEmptyElId) firstEmptyElId = rf.elId;
+
+      isValid = false; // Есть хотя бы одна ошибка.
+    }
+  });
+
+  // Если есть ошибки — фокусируем курсор на первом незаполненном поле.
+  if (firstEmptyElId) {
+    var focusEl = document.getElementById(firstEmptyElId);
+    if (focusEl) focusEl.focus();
   }
 
-  // Если город заполнен — убираем ошибку (если она осталась с прошлой попытки).
-  clearCityError();
-
-  // Возвращаем true — форма валидна, можно переходить к сохранению.
-  return true;
+  return isValid;
 }
 
 // ─── Сохранение ──────────────────────────────────────────────────────────────
@@ -867,14 +960,15 @@ function validateForm(formData) {
  *      b. При ошибке API — показывает сообщение об ошибке через showError().
  *      c. При успехе — вызывает addTimelineComment() для записи в таймлайн.
  *
- * ПРИМЕЧАНИЕ: KC_CLIENT_CITY гарантированно не пустой (validateForm проверил выше).
- * Пустые необязательные поля передаются как '' — Bitrix24 их принимает и сохраняет как пустые.
+ * ПРИМЕЧАНИЕ: все 11 обязательных полей (REQUIRED_FIELDS) гарантированно не пустые
+ * (validateForm проверил выше). Пустые необязательные поля передаются как '' —
+ * Bitrix24 их принимает и сохраняет как пустые.
  */
 function saveForm() {
   // Шаг 1: Собираем все значения формы в объект.
   const formData = collectFormData();
 
-  // Шаг 2: Валидируем. Если не прошло — прерываем, showCityError уже отработал внутри.
+  // Шаг 2: Валидируем все 11 обязательных полей. Если не прошло — прерываем, ошибки уже показаны.
   if (!validateForm(formData)) return;
 
   // Шаг 3: Блокируем кнопку сохранения, чтобы менеджер не нажал её дважды.
@@ -885,7 +979,7 @@ function saveForm() {
   }
 
   // Шаг 4: Отправляем обновление лида в Bitrix24 через JavaScript SDK BX24.
-  // fix 5.A: KC_CLIENT_CITY гарантированно не пустой (validateForm проверил выше).
+  // Все 11 обязательных полей гарантированно не пустые (validateForm проверил выше).
   // Пустые необязательные поля передаём как пустую строку — Bitrix24 их примет.
   BX24.callMethod('crm.lead.update', {
     id: leadId, // ID текущего лида (глобальная переменная, установлена в app.js)
@@ -1060,7 +1154,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // (Т.е. сбрасывает именно изменения, внесённые менеджером вручную.)
         if (form) form.reset();
 
-        // Убираем ошибку города (если была показана до нажатия «Сбросить»).
+        // Убираем все ошибки валидации (если были показаны до нажатия «Сбросить»).
+        _clearAllFieldErrors();
+        // Дополнительно сбрасываем жёлтое предупреждение TZ города.
         clearCityError();
 
         // Пересчитываем прогресс заполнения — после сброса счётчик должен обновиться.
