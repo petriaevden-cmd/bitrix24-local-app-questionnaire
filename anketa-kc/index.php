@@ -16,10 +16,10 @@
 require_once __DIR__ . '/config.php';
 
 $portalHost  = htmlspecialchars(parse_url(PORTAL_URL, PHP_URL_HOST), ENT_QUOTES);
-$salesDeptId = (int) SALES_DEPT_ID;
+$salesDeptId  = (int) SALES_DEPT_ID;
+$bpTemplateId = (int) BP_TEMPLATE_ID;
 $slotMin     = (int) SLOT_DURATION_MIN;
 $horizonDays = (int) SLOT_HORIZON_DAYS;
-// Баг 11 fix: POLLING_INTERVAL удалён из APP_CONFIG — startPolling() является no-op, поллинг не используется
 $minSlots    = (int) MIN_SLOTS_PER_DAY;
 $clientHrMin = (int) CLIENT_HOUR_MIN;
 $clientHrMax = (int) CLIENT_HOUR_MAX;
@@ -57,7 +57,8 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
   <!-- Конфиг из PHP → JS -->
   <script>
     window.APP_CONFIG = {
-      salesDeptId:  <?= $salesDeptId ?>,
+      salesDeptId:   <?= $salesDeptId ?>,
+      bpTemplateId:  <?= $bpTemplateId ?>,
       slotMin:      <?= $slotMin ?>,
       horizonDays:  <?= $horizonDays ?>,
       // Баг 11 fix: pollingMs удалён — startPolling() является no-op,

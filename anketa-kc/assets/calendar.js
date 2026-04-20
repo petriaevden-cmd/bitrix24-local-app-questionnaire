@@ -83,23 +83,58 @@ function initCalendar() {
 }
 
 // ── Утилиты дат ──────────────────────────────────────────────────────────────
+/**
+ * Возвращает ближайший день (включая текущий), в который хотя бы один
+ * активный МП работает. Если MP_CONFIG не загружен — возвращает сегодня.
+ * Все дни недели доступны: разные МП могут работать и по выходным.
+ */
 function nextWorkday(d) {
   const dt = new Date(d);
   dt.setHours(0, 0, 0, 0);
-  while (dt.getDay() === 0 || dt.getDay() === 6) dt.setDate(dt.getDate() + 1);
+  // Собираем множество рабочих дней всех активных МП
+  var allWorkDays = _getAllWorkDays();
+  // Если данных нет — не пропускаем ни одного дня
+  if (allWorkDays.length === 0) return dt;
+  // Ищем ближайший рабочий день (максимум 7 итераций)
+  for (var i = 0; i < 7; i++) {
+    if (allWorkDays.indexOf(dt.getDay()) !== -1) return dt;
+    dt.setDate(dt.getDate() + 1);
+  }
   return dt;
 }
 
 function shiftDay(delta) {
   if (!_currentDay) return;
   const dt = new Date(_currentDay);
+  var allWorkDays = _getAllWorkDays();
+  // Сдвигаемся на 1 день в нужном направлении
   dt.setDate(dt.getDate() + delta);
-  while (dt.getDay() === 0 || dt.getDay() === 6) {
-    dt.setDate(dt.getDate() + (delta > 0 ? 1 : -1));
+  // Если есть данные о рабочих днях — пропускаем дни, когда все МП выходные
+  if (allWorkDays.length > 0) {
+    for (var i = 0; i < 7; i++) {
+      if (allWorkDays.indexOf(dt.getDay()) !== -1) break;
+      dt.setDate(dt.getDate() + (delta > 0 ? 1 : -1));
+    }
   }
   _currentDay    = dt;
   _autoJumpCount = 0;
   loadAllSlots();
+}
+
+/**
+ * Собирает множество (массив уникальных) рабочих дней недели
+ * из всех активных МП в MP_CONFIG.
+ * Возвращает, например, [0, 1, 2, 3, 4, 5, 6] если кто-то работает каждый день.
+ */
+function _getAllWorkDays() {
+  if (typeof MP_CONFIG === 'undefined') return [];
+  var days = {};
+  Object.keys(MP_CONFIG).forEach(function (id) {
+    var mp = MP_CONFIG[id];
+    if (!mp.active || !mp.workDays) return;
+    mp.workDays.forEach(function (d) { days[d] = true; });
+  });
+  return Object.keys(days).map(function (k) { return parseInt(k, 10); });
 }
 
 function fmtHour(utcMs, offsetH) {
@@ -401,13 +436,26 @@ function renderTable() {
   }
 }
 
+// ── Опции канала консультации (для БП «Назначить встречу») ────────────────────
+var CONSULTATION_CHANNELS = [
+  { value: 'Звонок',           label: 'Звонок' },
+  { value: 'WhatsApp',         label: 'WhatsApp' },
+  { value: 'Telegram',         label: 'Telegram' },
+  { value: 'Яндекс Телемост',  label: 'Яндекс Телемост' }
+];
+
 // ── Выбор слота ───────────────────────────────────────────────────────────────
 function selectSlot(calId, slot) {
   const mp = (MP_CALENDARS || {})[calId] || {};
   const bookingBody = document.getElementById('booking-body');
   if (bookingBody) {
+    // Опции канала консультации
+    var channelOpts = CONSULTATION_CHANNELS.map(function (ch) {
+      return '<option value="' + escHtml(ch.value) + '">' + escHtml(ch.label) + '</option>';
+    }).join('');
+
     bookingBody.innerHTML =
-      '<div class="space-y-1.5">' +
+      '<div class="space-y-2">' +
       '<div class="text-xs text-gray-500">МП: <span class="font-semibold text-gray-800">' + escHtml(mp.short) + '</span></div>' +
       '<div class="text-xs text-gray-500">Время МП: <span class="font-mono font-semibold text-gray-800">' +
         escHtml(fmtHour(slot.utcMs, mp.utc)) + ' UTC+' + mp.utc + '</span></div>' +
@@ -415,13 +463,21 @@ function selectSlot(calId, slot) {
         ? '<div class="text-xs text-gray-500">Время клиента: <span class="font-mono font-semibold text-blue-600">' +
           escHtml(fmtHour(slot.utcMs, _clientUtc)) + ' UTC+' + _clientUtc + '</span></div>'
         : '') +
+      // Селект канала консультации
+      '<div class="flex flex-col gap-0.5">' +
+        '<label for="bp-channel" class="text-[11px] font-medium text-gray-500">Канал консультации</label>' +
+        '<select id="bp-channel" class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-md ' +
+          'focus:ring-blue-500 focus:border-blue-500 block w-full px-2 py-1">' +
+          channelOpts +
+        '</select>' +
+      '</div>' +
       '<button type="button" id="btn-book-confirm" ' +
-        'class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors">' +
+        'class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors">' +
         '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
           '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' +
         'Подтвердить запись</button>' +
       '</div>';
-    const confirmBtn = document.getElementById('btn-book-confirm');
+    var confirmBtn = document.getElementById('btn-book-confirm');
     if (confirmBtn) {
       confirmBtn.addEventListener('click', function () {
         if (_bookingInProgress) return;
@@ -436,31 +492,58 @@ function selectSlot(calId, slot) {
   setHiddenField('UF_CRM_KC_BOOKED_TIME', new Date(slot.utcMs).toISOString());
 }
 
-// ── Бронирование ──────────────────────────────────────────────────────────────
+// ── Бронирование: запуск БП «Назначить встречу» ──────────────────────────────
+
+/**
+ * Форматирует UTC-миллисекунды в строку для параметров БП: "dd.mm.YYYY HH:ii:ss"
+ * с учётом смещения часового пояса.
+ */
+function fmtBpDateTime(utcMs, offsetH) {
+  var d = new Date(utcMs + offsetH * 3600000);
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return p(d.getUTCDate()) + '.' + p(d.getUTCMonth() + 1) + '.' + d.getUTCFullYear() +
+    ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':00';
+}
+
 function bookSlot(calId, slot) {
   if (typeof leadId === 'undefined') {
     _bookingInProgress = false;
     return;
   }
-  const fio = (document.getElementById('f-fio') || {}).value || 'Клиент';
-  const mp  = (MP_CALENDARS || {})[calId] || {};
+  var fio = (document.getElementById('f-fio') || {}).value || 'Клиент';
+  var mp  = (MP_CALENDARS || {})[calId] || {};
+  var cfg = window.APP_CONFIG || {};
 
-  BX24.callMethod('calendar.event.add', {
-    type:          'calendar',
-    ownerId:       calId,
-    from:          fmtBxUTC(slot.utcMs),
-    to:            fmtBxUTC(slot.endUtcMs),
-    name:          fio,
-    description:   'Клиент: ' + fio + '. Записал: ' + (typeof CURRENT_USERNAME !== 'undefined' ? CURRENT_USERNAME : ''),
-    accessibility: 'busy',
-    importance:    'normal',
-    color:         '#2563EB'
+  // Значение канала консультации из селекта
+  var channelEl = document.getElementById('bp-channel');
+  var channel   = channelEl ? channelEl.value : 'Звонок';
+
+  // Время для МП: UTC-миллисекунды → локальное время МП (dd.mm.YYYY HH:ii:ss)
+  var dateTimeMp = fmtBpDateTime(slot.utcMs, mp.utc);
+
+  // Время для клиента: если TZ клиента известен — его локальное время, иначе время МП
+  var clientOffset = (_clientUtc !== null) ? _clientUtc : mp.utc;
+  var dateTimeClient = fmtBpDateTime(slot.utcMs, clientOffset);
+
+  // Календарь менеджера — формат calId: "MP<N>Vstrechi"
+  var calendarManager = calId;
+
+  // Запускаем бизнес-процесс «Назначить встречу»
+  BX24.callMethod('bizproc.workflow.start', {
+    TEMPLATE_ID: cfg.bpTemplateId || 40,
+    DOCUMENT_ID: ['crm', 'CCrmDocumentLead', 'LEAD_' + leadId],
+    PARAMETERS: {
+      'DateTime':            dateTimeMp,
+      'DateTimeClient':      dateTimeClient,
+      'CalendarMenager':     calendarManager,
+      'ConsultationChannel': channel
+    }
   }, function (result) {
     _bookingInProgress = false;
 
     if (result.error()) {
-      showError('Ошибка бронирования: ' + result.error());
-      const confirmBtn = document.getElementById('btn-book-confirm');
+      showError('Ошибка запуска БП: ' + result.error());
+      var confirmBtn = document.getElementById('btn-book-confirm');
       if (confirmBtn) {
         confirmBtn.disabled = false;
         confirmBtn.innerHTML =
@@ -471,20 +554,23 @@ function bookSlot(calId, slot) {
       return;
     }
 
-    const eventId = result.data();
-    saveBookingToLead(calId, fmtBxUTC(slot.utcMs), eventId);
-    notifyMpByCalId(calId, slot, fio);
+    var bpWorkflowId = result.data();
+    // Сохраняем данные бронирования в поля лида
+    saveBookingToLead(calId, fmtBxUTC(slot.utcMs), bpWorkflowId);
+    // Пишем комментарий в таймлайн
+    notifyMpByCalId(calId, slot, fio, channel);
     _autoJumpCount = 0;
     loadAllSlots();
 
-    const statusEl = document.getElementById('booking-status');
+    var statusEl = document.getElementById('booking-status');
     if (statusEl) {
       statusEl.className = 'mt-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800 flex items-center gap-1.5';
       statusEl.innerHTML =
         '<svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">' +
           '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' +
         '<span>Запись подтверждена: ' + escHtml(mp.short) + ', ' +
-        escHtml(fmtHour(slot.utcMs, mp.utc)) + ' UTC+' + mp.utc + '</span>';
+        escHtml(fmtHour(slot.utcMs, mp.utc)) + ' UTC+' + mp.utc +
+        ', канал: ' + escHtml(channel) + '</span>';
       statusEl.classList.remove('hidden');
     }
   });
@@ -504,14 +590,17 @@ function saveBookingToLead(calId, fromDt, eventId) {
   });
 }
 
-function notifyMpByCalId(calId, slot, leadName) {
-  const mp = (MP_CALENDARS || {})[calId] || {};
+function notifyMpByCalId(calId, slot, leadName, channel) {
+  var mp = (MP_CALENDARS || {})[calId] || {};
+  var comment = 'Запись к ' + (mp.short || calId) + ' на ' +
+    fmtHour(slot.utcMs, mp.utc) + ' UTC+' + mp.utc +
+    '. Клиент: ' + leadName +
+    (channel ? '. Канал: ' + channel : '');
   BX24.callMethod('crm.timeline.comment.add', {
     fields: {
       ENTITY_ID:   leadId,
       ENTITY_TYPE: 'lead',
-      COMMENT:     'Запись к ' + (mp.short || calId) + ' на ' +
-                   fmtHour(slot.utcMs, mp.utc) + ' UTC+' + mp.utc + '. Клиент: ' + leadName
+      COMMENT:     comment
     }
   }, function () {});
 }

@@ -1,25 +1,28 @@
 <?php
 /**
  * config.php — конфигурация локального приложения «Анкета (МКЦ + МП)»
- * Скопируйте в config.local.php и заполните реальными значениями.
- * config.local.php НЕ коммитится в репозиторий.
+ *
+ * Все вызовы REST API выполняются на клиенте через BX24 JS SDK.
+ * Вебхук используется только для серверных запросов (если понадобятся).
  */
 
 // URL вашего портала Bitrix24
 define('PORTAL_URL', 'https://crm.yurclick.com');
 
-// OAuth 2.0 — данные локального приложения
-define('APP_CLIENT_ID',     'local.XXXXXXXXXXX');
-define('APP_CLIENT_SECRET', 'XXXXXXXXXXXXXXXXXXX');
+// Вебхук для серверных вызовов REST API (scope: bizproc, calendar, crm)
+define('WEBHOOK_URL', 'https://crm.yurclick.com/rest/6/m1umtpppnvj21gud/');
+
+// ID шаблона бизнес-процесса «Назначить встречу»
+define('BP_TEMPLATE_ID', 40);
+
+// ID отдела продаж (для фильтрации сотрудников, если понадобится)
+define('SALES_DEPT_ID', 1);
 
 // Шаг слота — только 60 минут (часовые слоты)
 define('SLOT_DURATION_MIN', 60);
 
 // Горизонт показа слотов (дней вперёд)
 define('SLOT_HORIZON_DAYS', 7);
-
-// Баг 11 fix: POLLING_INTERVAL удалён — startPolling() является no-op,
-// автообновление не используется.
 
 // Минимум свободных слотов на день; если меньше — автопереход на следующий день
 define('MIN_SLOTS_PER_DAY', 1);
