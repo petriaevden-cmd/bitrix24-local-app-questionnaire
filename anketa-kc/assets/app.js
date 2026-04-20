@@ -1,122 +1,195 @@
 /**
  * app.js — инициализация приложения
  *
- * 1. BX24.init → получаем leadId из placement
- * 2. batch: crm.lead.get + user.current
+ * Порядок работы после загрузки страницы:
+ * 1. BX24.init → получаем leadId из placement (параметры плейсмента Bitrix24)
+ * 2. batch: crm.lead.get + user.current — загружаем данные лида и текущего пользователя одним пакетным запросом
  * 3. Заполняем шапку: имя текущего пользователя + заголовок лида
- * 4. initForm(lead)     — рендер полей, в т.ч. KC_CLIENT_CITY
- * 5. setClientCity(city, true)  — передаём город silent-режиме: только устанавливает _clientUtc,
- *                                  НЕ вызывает loadAllSlots (избегаем двойного запроса)
- * 6. initCalendar()             — теперь _clientUtc уже установлен, вызывает loadAllSlots один раз
- * 7. startPolling()
+ * 4. initForm(lead)     — рендер полей формы анкеты, в т.ч. KC_CLIENT_CITY (город клиента)
+ * 5. setClientCity(city, true)  — передаём город в silent-режиме: только устанавливает _clientUtc,
+ *                                  НЕ вызывает loadAllSlots (избегаем двойного запроса слотов)
+ * 6. initCalendar()             — теперь _clientUtc уже установлен корректно, вызывает loadAllSlots один раз
+ * 7. startPolling()             — запускает периодическую проверку обновлений (опрос сервера)
  */
 
-'use strict';
+'use strict'; // Включаем строгий режим JavaScript: запрещает использование необъявленных переменных и другие небезопасные конструкции
 
+// Идентификатор лида из Bitrix24 — будет заполнен после инициализации BX24
 let leadId           = null;
+
+// Объект с данными текущего авторизованного пользователя Bitrix24
 let currentUser      = null;
+
+// Полное имя текущего пользователя (ФИО) — используется для отображения в шапке формы
 let CURRENT_USERNAME = '';
 
+// Запускаем инициализацию приложения через SDK Bitrix24
+// Callback выполняется только после того, как BX24 готов к работе
 BX24.init(function () {
+
+  // Получаем информацию о текущем плейсменте (месте встраивания приложения в Bitrix24)
   const placement = BX24.placement.info();
+
+  // Извлекаем ID лида из параметров плейсмента и преобразуем строку в целое число
   leadId = parseInt(placement.options.ID, 10);
 
+  // Если ID лида не удалось получить (равен 0, NaN или не передан) — показываем ошибку и прекращаем выполнение
   if (!leadId) {
     showError('Не удалось получить ID лида из плейсмента Bitrix24.');
-    return;
+    return; // Останавливаем дальнейшую инициализацию, так как без ID работа невозможна
   }
 
+  // Отправляем пакетный запрос к API Bitrix24 сразу двумя методами за один вызов
+  // Это эффективнее, чем делать два отдельных запроса последовательно
   BX24.callBatch(
     {
+      // Первый запрос: получаем данные лида по его ID
       getLead:        ['crm.lead.get',  { id: leadId }],
+
+      // Второй запрос: получаем данные текущего авторизованного пользователя
       getCurrentUser: ['user.current',  {}]
     },
+
+    // Callback-функция вызывается после того, как оба запроса завершились
     function (results) {
+
+      // Проверяем, не вернул ли запрос данных лида ошибку
       if (results.getLead.error()) {
+        // Если ошибка есть — показываем её пользователю и останавливаем инициализацию
         showError('Ошибка загрузки лида: ' + results.getLead.error());
-        return;
+        return; // Дальнейшая работа без данных лида невозможна
       }
 
+      // Извлекаем объект с полями лида из успешного ответа
       const lead = results.getLead.data();
+
+      // Извлекаем объект с данными текущего пользователя из ответа и сохраняем в глобальную переменную
       currentUser = results.getCurrentUser.data();
 
-      // ФИО из user.current
+      // Формируем полное ФИО пользователя из трёх полей: фамилия, имя, отчество
+      // filter(Boolean) убирает пустые строки или undefined, join(' ') соединяет через пробел
+      // Если ни одно поле не заполнено — используем строку-заглушку 'Пользователь'
       CURRENT_USERNAME = [
-        currentUser.LAST_NAME,
-        currentUser.NAME,
-        currentUser.SECOND_NAME
+        currentUser.LAST_NAME,   // Фамилия пользователя
+        currentUser.NAME,        // Имя пользователя
+        currentUser.SECOND_NAME  // Отчество пользователя
       ].filter(Boolean).join(' ').trim() || 'Пользователь';
 
-      // Шапка
+      // Находим элемент заголовка лида в DOM по его идентификатору
       const titleEl = document.getElementById('lead-title');
+
+      // Если элемент найден — записываем в него заголовок лида, или запасной текст с номером лида
       if (titleEl) titleEl.textContent = lead.TITLE || ('Лид #' + leadId);
 
+      // Находим элемент для отображения имени текущего пользователя в шапке
       const userEl = document.getElementById('bx24-user');
+
+      // Если элемент найден — записываем в него сформированное ФИО пользователя
       if (userEl) userEl.textContent = CURRENT_USERNAME;
 
-      // Скрыть лоадер, показать форму
+      // Находим элемент индикатора загрузки (спиннер / текст "загрузка...")
       const loading = document.getElementById('loading');
+
+      // Скрываем индикатор загрузки, добавляя CSS-класс 'hidden', так как данные уже получены
       if (loading) loading.classList.add('hidden');
 
+      // Находим элемент формы анкеты
       const form = document.getElementById('anketa-form');
+
+      // Если форма найдена — делаем её видимой: убираем класс 'hidden' и явно задаём display: flex
       if (form) {
-        form.classList.remove('hidden');
-        // flex-col уже прописан в HTML-классах, добавляем только display
-        form.style.display = 'flex';
+        form.classList.remove('hidden');   // Убираем скрывающий CSS-класс
+        form.style.display = 'flex';       // Явно задаём flex-отображение для корректной вёрстки
       }
 
-      // ── Порядок инициализации важен ──────────────────────────────────────
-      // 1. Сначала рендерим форму — поле f-UF_CRM_KC_CLIENT_CITY появляется в DOM
+      // Если функция initForm определена (подключён соответствующий скрипт) — вызываем её
+      // Передаём объект лида, чтобы функция могла предзаполнить поля формы данными из Bitrix24
       if (typeof initForm === 'function') initForm(lead);
 
-      // 2. Передаём город из лида в calendar ДО initCalendar.
-      //    silent=true: только устанавливает _clientUtc, НЕ вызывает loadAllSlots.
-      //    Это исправляет двойной вызов loadAllSlots (баг 2):
-      //    раньше setClientCity + initCalendar оба вызывали loadAllSlots = 22 API-запроса.
-      //    Теперь loadAllSlots вызывается только один раз — внутри initCalendar.
+      // Если функция setClientCity определена — устанавливаем город клиента
+      // Берём значение поля UF_CRM_KC_CLIENT_CITY из лида, обрезаем пробелы
+      // Второй аргумент true = silent-режим: только сохраняет UTC-смещение города,
+      // но НЕ запускает загрузку слотов календаря, чтобы избежать двойного запроса
       if (typeof setClientCity === 'function') {
         setClientCity((lead.UF_CRM_KC_CLIENT_CITY || '').trim(), true);
       }
 
-      // 3. Теперь инициализируем календарь — _clientUtc уже не null (если город есть)
+      // Если функция initCalendar определена — инициализируем календарь выбора даты/времени
+      // К этому моменту UTC-смещение клиента уже установлено через setClientCity,
+      // поэтому loadAllSlots внутри initCalendar выполнится один раз с корректным смещением
       if (typeof initCalendar  === 'function') initCalendar();
+
+      // Если функция startPolling определена — запускаем периодический опрос сервера
+      // Это нужно для автоматического обновления данных (например, статуса слотов) без перезагрузки страницы
       if (typeof startPolling  === 'function') startPolling();
     }
   );
 });
 
-/** Показать ошибку (Flowbite Alert) */
+/**
+ * showError — отображает сообщение об ошибке на странице.
+ *
+ * Скрывает индикатор загрузки и показывает блок с текстом ошибки.
+ *
+ * @param {string} msg — текст сообщения об ошибке для отображения пользователю
+ */
 function showError(msg) {
-  const loading = document.getElementById('loading');
-  if (loading) loading.classList.add('hidden');
 
-  const wrap = document.getElementById('error-msg');
-  const text = document.getElementById('error-text');
+  // Находим индикатор загрузки и скрываем его — ошибка заменяет состояние "загрузки"
+  const loading = document.getElementById('loading');
+  if (loading) loading.classList.add('hidden'); // Скрываем спиннер/текст загрузки
+
+  // Находим контейнер блока ошибки и элемент с текстом внутри него
+  const wrap = document.getElementById('error-msg');   // Обёртка блока ошибки
+  const text = document.getElementById('error-text');  // Элемент для текста ошибки
+
+  // Если оба элемента существуют в DOM — заполняем и показываем блок ошибки
   if (wrap && text) {
-    text.textContent = msg;
-    wrap.classList.remove('hidden');
-    wrap.classList.add('flex');
+    text.textContent = msg;           // Записываем текст ошибки в элемент
+    wrap.classList.remove('hidden');  // Убираем скрывающий класс, чтобы блок стал видимым
+    wrap.classList.add('flex');       // Добавляем flex-отображение для корректного позиционирования
   }
 }
 
-/** Показать успех (Flowbite Alert, автоскрытие 4 с) */
+/**
+ * showSuccess — отображает уведомление об успешном сохранении данных.
+ *
+ * Показывает блок успеха с текущим временем сохранения,
+ * а затем автоматически скрывает его через 4 секунды.
+ */
 function showSuccess() {
-  const el = document.getElementById('success-msg');
-  if (!el) return;
-  el.classList.remove('hidden');
-  el.classList.add('flex');
 
+  // Находим элемент уведомления об успехе по идентификатору
+  const el = document.getElementById('success-msg');
+
+  // Если элемент не найден в DOM — выходим из функции, чтобы избежать ошибок
+  if (!el) return;
+
+  // Делаем блок успеха видимым: убираем скрывающий класс и добавляем flex-отображение
+  el.classList.remove('hidden'); // Убираем скрытие
+  el.classList.add('flex');      // Включаем flex для корректной вёрстки уведомления
+
+  // Получаем текущую дату и время для отображения в уведомлении
   const now     = new Date();
+
+  // Форматируем время в формате "ЧЧ:ММ" по русской локали (например, "14:35")
   const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+  // Находим элемент статуса сохранения (обычно небольшая строка под кнопкой "Сохранить")
   const status = document.getElementById('save-status');
+
+  // Если элемент статуса найден — обновляем его текст с указанием времени сохранения
   if (status) status.textContent = 'Сохранено в ' + timeStr;
 
+  // Находим элемент "последнее сохранение" (может отображаться в другом месте интерфейса)
   const saved = document.getElementById('last-saved');
+
+  // Если элемент найден — записываем в него время последнего успешного сохранения
   if (saved) saved.textContent = 'Сохранено в ' + timeStr;
 
+  // Запускаем таймер на 4000 миллисекунд (4 секунды), после которого уведомление скроется
   setTimeout(function () {
-    el.classList.add('hidden');
-    el.classList.remove('flex');
-  }, 4000);
+    el.classList.add('hidden');    // Скрываем блок уведомления
+    el.classList.remove('flex');   // Убираем flex-отображение, чтобы элемент не занимал место
+  }, 4000); // Задержка 4 секунды — достаточно, чтобы пользователь успел прочитать уведомление
 }
