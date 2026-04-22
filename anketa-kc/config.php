@@ -10,7 +10,7 @@
  */
 
 // URL портала Битрикс24 (используется для формирования ссылок и подключения BX24 JS SDK)
-define('PORTAL_URL', 'https://crm.yurclick.com');
+define('PORTAL_URL', 'crm.yurclick.com');
 
 // Входящий вебхук Битрикс24 для серверных вызовов REST API
 // Скоупы вебхука: bizproc, calendar, crm
