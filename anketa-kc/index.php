@@ -84,7 +84,7 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
        библиотека получает токены аутентификации из родительского окна Битрикс24.
        Без неё невозможно вызывать BX24.callMethod(), получить ID текущего лида и т.д.
        $portalHost — PHP вставляет реальный хост (например: mycompany.bitrix24.ru). -->
-  <script src="https://<?= $portalHost ?>/bitrix/js/rest/bx24.js"></script>
+  <script src="//api.bitrix24.tech/api/v1/"></script>
 
   <!-- Tailwind CSS v4 CDN: браузерная версия, компилирует классы на лету.
        Используется для всей разметки: layout, цвета, типографика, отступы.
