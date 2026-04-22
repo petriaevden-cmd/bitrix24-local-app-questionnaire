@@ -85,6 +85,7 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
        Без неё невозможно вызывать BX24.callMethod(), получить ID текущего лида и т.д.
        $portalHost — PHP вставляет реальный хост (например: mycompany.bitrix24.ru). -->
   <script src="//api.bitrix24.tech/api/v1/"></script>
+  <script src="//<?= $portalHost ?>/bitrix/js/rest/bx24/bx24.min.js"></script>
 
   <!-- Tailwind CSS v4 CDN: браузерная версия, компилирует классы на лету.
        Используется для всей разметки: layout, цвета, типографика, отступы.
