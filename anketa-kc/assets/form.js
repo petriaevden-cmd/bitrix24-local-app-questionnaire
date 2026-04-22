@@ -908,7 +908,12 @@ function collectFormData() {
  * @returns {boolean} — true если форма прошла валидацию, false если есть ошибки.
  */
 function validateForm(formData) {
-  // Сбрасываем все ошибки с прошлой попытки, чтобы показать только актуальные.
+  // TODO: валидация временно отключена — раскомментировать когда нужно
+  return true;
+
+  /* --- ВАЛИДАЦИЯ ОТКЛЮЧЕНА (временно) ---
+
+  // Сбрасываем все ошибки с прошлой попытки...
   _clearAllFieldErrors();
 
   // Также сбрасываем жёлтое предупреждение TZ — оно управляется отдельно.
@@ -932,6 +937,8 @@ function validateForm(formData) {
       if (!firstEmptyElId) firstEmptyElId = rf.elId;
 
       isValid = false; // Есть хотя бы одна ошибка.
+        return isValid;
+  --- КОНЕЦ ОТКЛЮЧЁННОЙ ВАЛИДАЦИИ --- */
     }
   });
 
