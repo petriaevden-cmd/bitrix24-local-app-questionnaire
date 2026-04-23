@@ -93,6 +93,23 @@
     options: { ID: String(_getLeadIdFromUrl()) }
   };
 
+  // ID пользователя Битрикс24, к которому технически привязан общий
+  // календарь всех встреч МП. Все события встреч лежат у этого
+  // пользователя в секции (определяется автоматически из ответа).
+  // Название события имеет формат «ВСТРЕЧА. <дата> <время> | МП<N>» —
+  // из него парсится номер МП, чтобы собрать занятость по каждому МП.
+  //
+  // Значение переопределяется через APP_CONFIG.calendarOwnerId в index.php.
+  var MEETINGS_OWNER_ID = (global.APP_CONFIG && global.APP_CONFIG.calendarOwnerId)
+    ? parseInt(global.APP_CONFIG.calendarOwnerId, 10)
+    : 137;
+
+  // Кеш ответа calendar.event.get для одного диапазона дат.
+  // Ключ — строка "from..to", значение — Promise со списком уже распределённых
+  // по МП событий. Это позволяет вызвать одно REST и переиспользовать его
+  // результат для всех 11 calId, не делая 11 одинаковых запросов.
+  var _eventsCache = { key: null, promise: null };
+
   // ──────────────────────────────────────────────────────────────────────────
   // БЛОК 3: НИЗКОУРОВНЕВЫЙ ВЫЗОВ ВЕБХУКА (fetch)
   // ──────────────────────────────────────────────────────────────────────────
@@ -173,43 +190,54 @@
     }
 
     // АДАПТЕР calendar.accessibility.get:
-    // Старый код передаёт параметр ids:[calId] в формате "MP<userId>Vstrechi".
-    // Вебхук не поддерживает ids — он требует users:[userId].
-    // Преобразуем calId → userId, вызываем вебхук, приводим ответ к старому формату.
+    //
+    // Старый код передаёт параметр ids:[calId] в формате "MP<N>Vstrechi",
+    // где N — номер менеджера продаж (1..11). Это НЕ ID пользователя Битрикс24,
+    // а имя внешнего календаря-сущности (см. справочник МП-календарей на портале).
+    //
+    // Реальная занятость МП хранится в событиях календаря у технического
+    // пользователя MEETINGS_OWNER_ID. Название каждого события имеет формат
+    // «ВСТРЕЧА. <dd.mm.YYYY HH:MM:SS> | МП<N>». Чтобы понять, какой МП занят
+    // в конкретный слот, нужно достать все события и распределить их по N из NAME.
+    //
+    // Стратегия:
+    //   1. Для первого вызова за диапазон [from..to] делаем один calendar.event.get.
+    //   2. Парсим NAME каждого события: /МП\s*(\d+)/ → N.
+    //   3. Складываем в Map: N → [events...].
+    //   4. Для всех последующих вызовов (других calId за тот же диапазон)
+    //      отдаём уже закешированную выборку.
+    //   5. Для запрошенного calId достаём массив и отдаём под видом
+    //      calendar.accessibility.get (массив событий с ACCESSIBILITY=busy).
     if (method === 'calendar.accessibility.get' && Array.isArray(params.ids)) {
-      var userIds = params.ids.map(function (calId) {
-        // "MP137Vstrechi" → 137
+      var mpNumbers = params.ids.map(function (calId) {
+        // "MP2Vstrechi" → 2
         var m = /^MP(\d+)Vstrechi$/.exec(String(calId));
         return m ? parseInt(m[1], 10) : null;
       }).filter(function (x) { return x !== null; });
 
-      if (userIds.length === 0) {
+      if (mpNumbers.length === 0) {
         return Promise.resolve({ result: [] });
       }
 
-      var newParams = {
-        from: params.from,
-        to: params.to,
-        users: userIds
-      };
+      // Ключ кеша — диапазон дат. calendar.js запрашивает ровно один день
+      // и делает это параллельно для всех 11 МП — кеш позволяет обойтись
+      // единственным REST-вызовом за все 11 calId.
+      var cacheKey = String(params.from) + '..' + String(params.to);
 
-      return _rawCall('calendar.accessibility.get', newParams).then(function (answer) {
-        // Вебхук вернёт { result: { "137": [events...], "14": [...] } }.
-        // Старый код ожидает массив событий для одного запрошенного calId.
-        // Так как мы запрашиваем по одному calId за раз, выбираем массив первого пользователя.
-        var raw = answer && answer.result;
-        var firstKey = userIds[0];
-        var list = (raw && raw[String(firstKey)]) || [];
+      if (!_eventsCache.promise || _eventsCache.key !== cacheKey) {
+        _eventsCache.key = cacheKey;
+        _eventsCache.promise = _fetchMpMeetings(params.from, params.to);
+      }
 
-        // Нормализуем формат DATE_FROM / DATE_TO: вебхук отдаёт "dd.mm.YYYY HH:MM:SS",
-        // а старый код при работе через SDK получал ISO. Конвертируем вручную.
-        list = list.map(function (ev) {
-          return Object.assign({}, ev, {
-            DATE_FROM: _toIsoFromRuFormat(ev.DATE_FROM, ev.TZ_FROM),
-            DATE_TO:   _toIsoFromRuFormat(ev.DATE_TO,   ev.TZ_TO)
-          });
+      return _eventsCache.promise.then(function (byMp) {
+        // byMp — { 1: [events...], 2: [events...], ... }
+        var list = [];
+        mpNumbers.forEach(function (n) {
+          var events = byMp[n] || [];
+          for (var i = 0; i < events.length; i++) {
+            list.push(events[i]);
+          }
         });
-
         return { result: list };
       });
     }
@@ -219,20 +247,118 @@
   }
 
   /**
-   * _toIsoFromRuFormat("23.04.2026 09:00:00", "Europe/Samara") → "2026-04-23T09:00:00+04:00"
-   * Очень простая конвертация для отображения — в calendar.js важны миллисекунды
-   * Date.parse, поэтому приводим к ISO без учёта TZ (new Date() распарсит локально).
-   * В режиме вебхука это приемлемо: точные миллисекунды не критичны для UI.
+   * _fetchMpMeetings(from, to) → Promise<{ 1: [events], 2: [events], ... }>
+   *
+   * Загружает все события из календаря MEETINGS_OWNER_ID за диапазон [from..to],
+   * разбирает название каждого события регэкспом /МП\s*(\d+)/ и группирует
+   * по номеру МП. Это — основной путь определения занятости МП в режиме вебхука.
    */
-  function _toIsoFromRuFormat(s, tz) {
-    if (!s || typeof s !== 'string') return s;
-    // Уже ISO?
-    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s;
-    var m = /^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/.exec(s);
-    if (!m) return s;
-    // Собираем ISO без TZ — браузер распарсит в локальной зоне; для сравнения
-    // интервалов это работает корректно, так как все слоты в одной зоне.
-    return m[3] + '-' + m[2] + '-' + m[1] + 'T' + m[4] + ':' + m[5] + ':' + m[6];
+  function _fetchMpMeetings(from, to) {
+    return _rawCall('calendar.event.get', {
+      type: 'user',
+      ownerId: MEETINGS_OWNER_ID,
+      from: from,
+      to: to
+    }).then(function (answer) {
+      var events = (answer && answer.result) || [];
+      if (!Array.isArray(events)) events = [];
+
+      var byMp = {};
+      var nameRe = /МП\s*(\d+)/;
+
+      events.forEach(function (ev) {
+        var name = String(ev.NAME || '');
+        var m = name.match(nameRe);
+        if (!m) return; // Событие без пометки "МП N" игнорируем — оно не из нашего потока.
+        var n = parseInt(m[1], 10);
+        if (!n) return;
+
+        // Пропускаем удалённые и свободные события — они не должны блокировать слот.
+        if (ev.DELETED === 'Y') return;
+        if (ev.ACCESSIBILITY === 'free') return;
+
+        // Нормализуем DATE_FROM/DATE_TO в ISO с учётом часового пояса. Важно:
+        // calendar.js сравнивает интервалы через new Date(str).getTime(), поэтому
+        // нужны абсолютные UTC-миллисекунды, а не локальная строка без зоны.
+        // Используем DATE_FROM_TS_UTC / DATE_TO_TS_UTC (готовый UTC-timestamp в секундах),
+        // если они есть — это самый надёжный источник. Иначе — склеиваем ISO
+        // с таймзоной из TZ_FROM/TZ_TO.
+        var normalized = Object.assign({}, ev, {
+          DATE_FROM: _makeIsoWithTz(ev.DATE_FROM, ev.TZ_FROM, ev.DATE_FROM_TS_UTC),
+          DATE_TO:   _makeIsoWithTz(ev.DATE_TO,   ev.TZ_TO,   ev.DATE_TO_TS_UTC),
+          // Выставляем ACCESSIBILITY=busy явно: в calendar.js фильтр
+          // оставляет только busy/absent, а calendar.event.get может вернуть
+          // ACCESSIBILITY=null/undefined для обычных встреч.
+          ACCESSIBILITY: ev.ACCESSIBILITY === 'absent' ? 'absent' : 'busy'
+        });
+
+        if (!byMp[n]) byMp[n] = [];
+        byMp[n].push(normalized);
+      });
+
+      return byMp;
+    });
+  }
+
+  /**
+   * _makeIsoWithTz(dateStr, tzName, utcTs)
+   *   dateStr — строка в формате «dd.mm.YYYY HH:MM:SS» (время в зоне TZ).
+   *   tzName  — название таймзоны, напр. "Europe/Samara", "Europe/Moscow".
+   *   utcTs   — готовый UTC-timestamp в секундах (DATE_FROM_TS_UTC из ответа).
+   *
+   * Возвращает ISO-строку с явно указанным временем в UTC (с суффиксом Z), чтобы
+   * new Date(str) парсил её одинаково в любом браузере/таймзоне.
+   *
+   * Стратегия:
+   *   1. Если есть utcTs — используем его, это самый надёжный источник.
+   *   2. Иначе берём dateStr в качестве локального времени в tzName и переводим в UTC
+   *      через Intl.DateTimeFormat (алгоритм ниже).
+   *   3. Если tzName неизвестен — считаем, что время уже в UTC (крайний случай).
+   */
+  function _makeIsoWithTz(dateStr, tzName, utcTs) {
+    // Ветка 1: готовый UTC-timestamp — это самый точный путь.
+    if (utcTs) {
+      var tsNum = parseInt(utcTs, 10);
+      if (!isNaN(tsNum)) return new Date(tsNum * 1000).toISOString();
+    }
+
+    if (!dateStr || typeof dateStr !== 'string') return dateStr;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(dateStr)) return dateStr;
+
+    var m = /^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/.exec(dateStr);
+    if (!m) return dateStr;
+
+    var Y = +m[3], Mo = +m[2], D = +m[1], h = +m[4], mi = +m[5], s = +m[6];
+
+    // Ветка 2: если есть tzName, вычисляем смещение этой зоны от UTC и вычитаем.
+    if (tzName) {
+      try {
+        // Берём гипотетическую точку «Y-Mo-D h:mi:s UTC» и смотрим, в какое
+        // время её отобразит Intl.DateTimeFormat для зоны tzName.
+        // Разница — это смещение зоны.
+        var asUtc = Date.UTC(Y, Mo - 1, D, h, mi, s);
+        var parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: tzName, hour12: false,
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).formatToParts(new Date(asUtc));
+        var p = {};
+        parts.forEach(function (x) { p[x.type] = x.value; });
+        // Точка asUtc, показанная в tzName, даёт время zonedTime.
+        // Смещение = (zonedTime - Y-Mo-D h:mi:s) часовой пояс относительно UTC.
+        var zonedUtc = Date.UTC(+p.year, +p.month - 1, +p.day,
+          +(p.hour === '24' ? 0 : p.hour), +p.minute, +p.second);
+        var offsetMs = zonedUtc - asUtc; // положительно для восточных зон
+        var trueUtc = asUtc - offsetMs;
+        return new Date(trueUtc).toISOString();
+      } catch (e) {
+        // Intl недоступен — падаем на ветку 3.
+      }
+    }
+
+    // Ветка 3: зона неизвестна — записываем как UTC (крайний случай).
+    var padN = function (n) { return String(n).padStart(2, '0'); };
+    return m[3] + '-' + m[2] + '-' + m[1] + 'T' + padN(h) + ':' + padN(mi) + ':' + padN(s) + 'Z';
   }
 
   // ──────────────────────────────────────────────────────────────────────────
