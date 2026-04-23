@@ -79,13 +79,25 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
   <!-- Заголовок вкладки — отображается в заголовке фрейма Битрикс24. -->
   <title>Анкета</title>
 
-  <!-- BX24 JS SDK: клиентская библиотека Битрикс24.
-       Загружается с сервера ПОРТАЛА (не CDN) — обязательное требование:
-       библиотека получает токены аутентификации из родительского окна Битрикс24.
-       Без неё невозможно вызывать BX24.callMethod(), получить ID текущего лида и т.д.
-       $portalHost — PHP вставляет реальный хост (например: mycompany.bitrix24.ru). -->
+  <!--
+    ════════════════════════════════════════════════════════════════════════
+    === ROLLBACK START (legacy BX24 SDK load) ===
+    Эти две строки подключали настоящий BX24 JS SDK из iframe-родителя Битрикс24.
+    Они закомментированы на время разработки (данные берутся с вебхука).
+
+    Чтобы вернуть работу в iframe Битрикс24:
+      1. Раскомментируйте два тега <script> ниже.
+      2. Удалите блок «=== NEW: WEBHOOK MODE ===» (скрипт webhook-client.js и
+         установку window.APP_USE_WEBHOOK = true).
+      3. Проверьте config.php → PORTAL_URL указывает на реальный портал.
+    Подробности — ROLLBACK.md в корне репозитория.
+    ════════════════════════════════════════════════════════════════════════
+  -->
+  <!--
   <script src="//api.bitrix24.tech/api/v1/"></script>
   <script src="//<?= $portalHost ?>/bitrix/js/rest/bx24/bx24.min.js"></script>
+  -->
+  <!-- === ROLLBACK END (legacy BX24 SDK load) === -->
 
   <!-- Tailwind CSS v4 CDN: браузерная версия, компилирует классы на лету.
        Используется для всей разметки: layout, цвета, типографика, отступы.
@@ -197,9 +209,40 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
        * Слоты позже clientHrMax часов по местному времени клиента не предлагаются.
        * Часовой пояс клиента определяется из поля KC_CLIENT_CITY через cities.js.
        */
-      clientHrMax:  <?= $clientHrMax ?>
+      clientHrMax:  <?= $clientHrMax ?>,
+
+      /**
+       * webhookUrl (string) — URL входящего вебхука Битрикс24.
+       * Используется модулем webhook-client.js для запросов к REST API
+       * в режиме разработки (вне iframe Битрикс24).
+       * Значение берётся из константы WEBHOOK_URL в config.php.
+       */
+      webhookUrl: <?= json_encode(WEBHOOK_URL) ?>
     };
   </script>
+
+  <!--
+    ════════════════════════════════════════════════════════════════════════
+    === NEW: WEBHOOK MODE ===
+    Включает режим разработки: все вызовы идут через входящий вебхук,
+    а не через BX24 JS SDK. Позволяет тестировать приложение вне iframe Битрикс24.
+
+    Порядок работы:
+      1. window.APP_USE_WEBHOOK = true — флаг включения shim-режима.
+      2. webhook-client.js регистрирует window.BX24 (shim c тем же API, что SDK).
+      3. Остальные скрипты (app.js, form.js, calendar.js) работают без изменений —
+         они обращаются к window.BX24.callMethod/callBatch как обычно.
+
+    Чтобы откатить к работе через оригинальный SDK — см. ROLLBACK.md.
+    ════════════════════════════════════════════════════════════════════════
+  -->
+  <script>
+    // Флаг включения режима вебхука. При true — webhook-client.js подменяет BX24.
+    // При false — используется настоящий BX24 SDK (нужно вернуть <script> выше).
+    window.APP_USE_WEBHOOK = true;
+  </script>
+  <script src="assets/webhook-client.js"></script>
+  <!-- === END: WEBHOOK MODE === -->
 </head>
 
 <!-- bg-gray-100: очень светлый серый фон — чуть темнее, чем у install/uninstall (bg-gray-50).

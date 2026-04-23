@@ -908,47 +908,31 @@ function collectFormData() {
  * @returns {boolean} — true если форма прошла валидацию, false если есть ошибки.
  */
 function validateForm(formData) {
-  // TODO: валидация временно отключена — раскомментировать когда нужно
+  // TODO: валидация временно отключена — раскомментировать, когда станет нужна.
+  // Фикс: в исходном коде был синтаксический конфликт в отключённом блоке
+  // (скобки вне /* */), что ломало загрузку всего form.js. Вся логика сохранена
+  // в комментарии ниже — для восстановления удалите `return true;` и раскомментируйте.
   return true;
 
   /* --- ВАЛИДАЦИЯ ОТКЛЮЧЕНА (временно) ---
-
-  // Сбрасываем все ошибки с прошлой попытки...
   _clearAllFieldErrors();
-
-  // Также сбрасываем жёлтое предупреждение TZ — оно управляется отдельно.
   var warnEl = document.getElementById('f-UF_CRM_KC_CLIENT_CITY-tz-warn');
   if (warnEl) warnEl.classList.add('hidden');
-
-  // Переменная для запоминания первого пустого поля (для фокуса).
   var firstEmptyElId = null;
-  // Флаг валидности: true, пока все поля заполнены.
   var isValid = true;
-
-  // Перебираем все обязательные поля и проверяем каждое.
   REQUIRED_FIELDS.forEach(function (rf) {
-    // formData[rf.key] — значение поля после trim() из collectFormData().
-    // Пустая строка '' или undefined считается «не заполнено».
     if (!formData[rf.key]) {
-      // Показываем ошибку: красная рамка + текст под полем.
       _showFieldError(rf.elId, rf.label);
-
-      // Запоминаем первое пустое поле — фокус переведём на него.
       if (!firstEmptyElId) firstEmptyElId = rf.elId;
-
-      isValid = false; // Есть хотя бы одна ошибка.
-        return isValid;
-  --- КОНЕЦ ОТКЛЮЧЁННОЙ ВАЛИДАЦИИ --- */
+      isValid = false;
     }
   });
-
-  // Если есть ошибки — фокусируем курсор на первом незаполненном поле.
   if (firstEmptyElId) {
     var focusEl = document.getElementById(firstEmptyElId);
     if (focusEl) focusEl.focus();
   }
-
   return isValid;
+  --- КОНЕЦ ОТКЛЮЧЕННОЙ ВАЛИДАЦИИ --- */
 }
 
 // ─── Сохранение ──────────────────────────────────────────────────────────────
