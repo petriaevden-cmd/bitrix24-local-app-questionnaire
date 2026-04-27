@@ -1016,6 +1016,45 @@ function bookSlot(calId, slot) {
     return;
   }
 
+  // ── Статус «Целевой / Нецелевой» ──────────────────────────────
+  //
+  // Рассчитываем статус перед запуском БП. Предпочитаем вызвать
+  // updateTargetStatusWidget() из form.js (он же запишет результат
+  // в window.__targetStatus). Если функция недоступна (легаси-сборка) —
+  // пытаемся вызвать TargetStatus.evaluate напрямую. Если и этого нет —
+  // принимаем статус 291 «Не определено» как fallback.
+  if (typeof updateTargetStatusWidget === 'function') {
+    updateTargetStatusWidget();
+  } else if (typeof window.TargetStatus !== 'undefined' &&
+             typeof collectFormData === 'function') {
+    window.__targetStatus = window.TargetStatus.evaluate(collectFormData());
+  }
+  var targetStatus = window.__targetStatus || {
+    id: 291, label: 'Не определено', reasons: ['Модуль оценки не загружен']
+  };
+
+  // Мягкое предупреждение при статусе 291 «Не определено»:
+  // разрешаем бронирование после явного подтверждения менеджера.
+  // (Решение пользователя в плане: запрет мягкий, не блокирующий.)
+  if (targetStatus.id === 291) {
+    var ok = confirm(
+      '«Целевой/Нецелевой» не определён. Записать всё равно?'
+    );
+    if (!ok) {
+      // Отмена — разблокируем кнопку и выходим.
+      _bookingInProgress = false;
+      var cb = document.getElementById('btn-book-confirm');
+      if (cb) {
+        cb.disabled = false;
+        cb.innerHTML =
+          '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' +
+          'Подтвердить запись';
+      }
+      return;
+    }
+  }
+
   // Читаем ФИО клиента из поля формы (используется в таймлайн-комментарии).
   var fio = (document.getElementById('f-fio') || {}).value || 'Клиент';
   // Получаем конфиг МП из словаря.
@@ -1040,6 +1079,8 @@ function bookSlot(calId, slot) {
   var calendarManager = calId;
 
   // Запускаем бизнес-процесс Bitrix24 «Назначить встречу» через REST API.
+  // Параметр CelNeCel — обязательный в БП, ссылается на enum-поле
+  // UF_CRM_1649136704 (289=Целевой, 290=Нецелевой, 291=Не определено).
   BX24.callMethod('bizproc.workflow.start', {
     TEMPLATE_ID: cfg.bpTemplateId || 40,                          // ID шаблона БП (настраивается в APP_CONFIG).
     DOCUMENT_ID: ['crm', 'CCrmDocumentLead', 'LEAD_' + leadId],  // Документ-лид, к которому привязываем встречу.
@@ -1047,7 +1088,8 @@ function bookSlot(calId, slot) {
       'DateTime':            dateTimeMp,       // Дата/время встречи в TZ МП.
       'DateTimeClient':      dateTimeClient,   // Дата/время встречи в TZ клиента.
       'CalendarMenager':     calendarManager,  // Идентификатор календаря МП (опечатка в параметре — намеренно: соответствует настройке БП).
-      'ConsultationChannel': channel           // Выбранный канал консультации.
+      'ConsultationChannel': channel,          // Выбранный канал консультации.
+      'CelNeCel':            targetStatus.id   // Целевой/Нецелевой (289/290/291) — итог оценки по стандарту.
     }
   }, function (result) {
     // Снимаем флаг блокировки в любом случае (успех или ошибка).
@@ -1074,7 +1116,9 @@ function bookSlot(calId, slot) {
     saveBookingToLead(calId, fmtBxUTC(slot.utcMs), bpWorkflowId);
 
     // Пишем информационный комментарий в таймлайн лида.
-    notifyMpByCalId(calId, slot, fio, channel);
+    // Передаём targetStatus — оценку «Целевой/Нецелевой» и список причин
+    // для расширенного комментария по стандарту Нецелевой.
+    notifyMpByCalId(calId, slot, fio, channel, targetStatus);
 
     // Сбрасываем счётчик автопереходов и перезагружаем расписание
     // (теперь слот будет помечен как занятый).
@@ -1154,14 +1198,25 @@ function saveBookingToLead(calId, fromDt, eventId) {
  * @param {string} leadName  — ФИО клиента из поля формы.
  * @param {string} channel   — выбранный канал консультации.
  */
-function notifyMpByCalId(calId, slot, leadName, channel) {
+function notifyMpByCalId(calId, slot, leadName, channel, targetStatus) {
   // Получаем конфиг МП для формирования читабельного имени в комментарии.
   var mp = (MP_CALENDARS || {})[calId] || {};
-  // Формируем текст комментария: МП + время в его TZ + имя клиента + канал.
+  // Формируем базовый текст комментария: МП + время в его TZ + имя клиента + канал.
   var comment = 'Запись к ' + (mp.short || calId) + ' на ' +
     fmtHour(slot.utcMs, mp.utc) + ' UTC+' + mp.utc +
     '. Клиент: ' + leadName +
     (channel ? '. Канал: ' + channel : ''); // Канал добавляем только если он указан.
+
+  // Расширяем комментарий блоком «Целевой/Нецелевой КЦ». Это требование
+  // «Стандарта НЕЦЕЛЕВОЙ встречи»: в истории лида видна итоговая оценка
+  // и сработавшие причины. targetStatus приходит из evaluateTargetStatus().
+  if (targetStatus && targetStatus.label) {
+    comment += '\n\nЦелевой/Нецелевой КЦ: ' + targetStatus.label.toUpperCase() + '.';
+    if (targetStatus.reasons && targetStatus.reasons.length > 0) {
+      // Перечисляем причины как пультовый список («•» работает в комментарии Bitrix24).
+      comment += ' Причины:\n• ' + targetStatus.reasons.join('\n• ');
+    }
+  }
 
   // Добавляем комментарий в таймлайн через CRM REST API.
   BX24.callMethod('crm.timeline.comment.add', {

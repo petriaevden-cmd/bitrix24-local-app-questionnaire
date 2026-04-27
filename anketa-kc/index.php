@@ -475,18 +475,60 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
           </div>
 
           <!-- ──────────────────────────────────────────────────────────────
-               Блок 5: Запись на встречу
+               Блок 5: Признаки нецелевой встречи
+               Содержит чек-боксы с признаками, влияющими на статус «Целевой/Нецелевой»
+               (по стандарту нецелевой встречи КЦ).
+               #netselevoi-body заполняется form.js (рендерит 14 чек-боксов).
+               Виджет-индикатор #target-status-widget показывает текущий статус:
+               зелёный «Целевой», красный «Нецелевой», жёлтый «Не определено».
+               #target-status-reasons — раскрывающийся список причин (показывается, если
+               статус = Нецелевой), управляется form.js через класс hidden.
+               Чек-боксы НЕ сохраняются в crm.lead.update — только формируют статус,
+               который передаётся в БП «Назначить встречу» при бронировании слота.
+               ────────────────────────────────────────────────────────────── -->
+          <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+              <!-- Цифра «5» — номер блока «Признаки нецелевой». -->
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold shrink-0">5</span>
+              <span class="text-xs font-semibold text-gray-700">Признаки нецелевой</span>
+              <!-- target-status-badge: бейдж текущего статуса справа от заголовка.
+                   Обновляется form.js через updateTargetStatusWidget().
+                   Начальное состояние — «Не определено» (жёлтый). -->
+              <span id="target-status-badge"
+                    class="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+                Не определено
+              </span>
+            </div>
+            <!-- netselevoi-body: пустой контейнер для чек-боксов признаков нецелевой встречи.
+                 Заполняется form.js — 14 чек-боксов (ипотека, поручитель, залог, имущество,
+                 сделки, ООО, статья 159 УК РФ, для другого, неподлежащий списанию долг,
+                 другая АС-компания, доход вне КМ). -->
+            <div id="netselevoi-body" class="px-3 py-3 flex flex-col gap-2 text-xs"></div>
+
+            <!-- target-status-reasons: список причин текущего статуса.
+                 Скрыт по умолчанию (hidden). form.js показывает блок и наполняет
+                 <ul> когда статус = «Нецелевой» (есть хотя бы одна сработавшая причина).
+                 border-t border-gray-100: отделение от блока чек-боксов. -->
+            <div id="target-status-reasons"
+                 class="hidden px-3 py-2 border-t border-gray-100 bg-red-50 text-xs text-red-800">
+              <div class="font-semibold mb-1">Причины:</div>
+              <ul class="list-disc list-inside space-y-0.5"></ul>
+            </div>
+          </div>
+
+          <!-- ──────────────────────────────────────────────────────────────
+               Блок 6: Запись на встречу
                НЕ заполняется form.js напрямую — данные записи (менеджер, время, ID события)
                устанавливаются calendar.js при выборе слота в правой панели расписания.
                booking-body показывает подсказку «Выберите слот справа →» до выбора слота.
                После выбора слота calendar.js обновляет этот блок: показывает детали записи.
-               bg-green-500 (а не bg-blue-600): зелёный кружок — «5» выделяет
+               bg-green-500 (а не bg-blue-600): зелёный кружок — «6» выделяет
                блок записи как особый (не анкетный) раздел.
                ────────────────────────────────────────────────────────────── -->
           <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
             <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-              <!-- Цифра «5» в зелёном кружке — визуально отличает блок записи от анкетных блоков. -->
-              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold shrink-0">5</span>
+              <!-- Цифра «6» в зелёном кружке — визуально отличает блок записи от анкетных блоков. -->
+              <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold shrink-0">6</span>
               <span class="text-xs font-semibold text-gray-700">Запись</span>
             </div>
 
@@ -685,6 +727,13 @@ $clientHrMax = (int) CLIENT_HOUR_MAX;
      Зависит от: window.APP_CONFIG, BX24 SDK (уже загружен в <head>).
      После загрузки данных показывает форму (убирает #loading, убирает hidden с #anketa-form). -->
 <script src="assets/app.js"></script>
+
+<!-- target-status.js: правила и функция расчёта статуса «Целевой/Нецелевой».
+     Экспортирует: window.TargetStatus = { evaluate, IDS, RULES }.
+     evaluate(formData) возвращает { id: 289|290|291, label, reasons[] }.
+     Используется form.js (виджет-индикатор) и calendar.js (CelNeCel в БП «Назначить встречу»).
+     Подключается ПОСЛЕ app.js (нужен BX24/placement) и ПЕРЕД form.js / calendar.js (они вызывают TargetStatus.evaluate). -->
+<script src="assets/target-status.js"></script>
 
 <!-- form.js: логика работы формы анкеты.
      Содержит: построение HTML-полей по конфигурации UF_FIELDS (синхронно с install.php),

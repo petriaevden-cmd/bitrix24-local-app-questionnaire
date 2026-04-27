@@ -24,10 +24,14 @@ bitrix24-local-app-questionnaire/
 │   ├── config.php                # ID приложения, client_secret, WEBHOOK_URL
 │   ├── manifest.json             # метаданные приложения для Маркетплейс
 │   ├── docs/                     # пользовательская документация
+│   │   ├── design-system.md
+│   │   ├── tz.md
+│   │   └── STANDARD_NETSELEVOI.md  # свод правил «Целевой/Нецелевой» КЦ
 │   └── assets/
 │       ├── app.js                # инициализация, загрузка лида и пользователя
-│       ├── form.js               # рендер и валидация 27 полей UF_CRM_KC_*
-│       ├── calendar.js           # загрузка слотов МП через calendar.accessibility.get
+│       ├── form.js               # рендер и валидация 27 полей UF_CRM_KC_* + блок «Признаки нецелевой»
+│       ├── target-status.js      # правила и расчёт «Целевой/Нецелевой» (11 правил)
+│       ├── calendar.js           # загрузка слотов МП через calendar.accessibility.get + CelNeCel в БП
 │       ├── cities.js             # справочник городов для автокомплита
 │       ├── mp-config.js          # MP_CONFIG — массив менеджеров продаж
 │       ├── polling.js            # периодический ping, следит за сессией
@@ -300,6 +304,27 @@ BX24::callMethod('placement.unbind', [
 - [ ] Приложение залито на HTTPS-домен (Битрикс24 не разрешает http в iframe)
 
 Чтобы вернуться из DEV в PROD — см. `ROLLBACK.md`.
+
+---
+
+## 7a. Логика «Целевой / Нецелевой» КЦ
+
+С апреля 2026 в анкету добавлен блок 5 «Признаки нецелевой встречи». Это UI-логика, которая по 11 правилам решает, целевой ли лид, и передаёт результат в БП «Назначить встречу» как обязательный параметр `CelNeCel` (поле лида `UF_CRM_1649136704`, enum `289 Целевой / 290 Нецелевой / 291 Не определено`).
+
+**Архитектура — один файл = одна ответственность:**
+
+- `assets/target-status.js` — чистые правила (`RULES[]` + `evaluate(formData) → { id, label, reasons[] }`). Никаких BX24-вызовов, никакой DOM-работы. Экспорт через `window.TargetStatus`.
+- `assets/form.js` — рендер 14 чек-боксов в `#netselevoi-body`, сбор их состояния в `collectFormData()`, обновление бейджа `#target-status-badge` и списка `#target-status-reasons` через `updateTargetStatusWidget()`. Делегированные listener'ы `change`/`input` на `#anketa-form`.
+- `assets/calendar.js → bookSlot()` — перед `bizproc.workflow.start` вызывает `updateTargetStatusWidget()`, читает `window.__targetStatus`, при `id === 291` показывает мягкий `confirm()`. Передаёт `CelNeCel: status.id` в параметрах БП и блок «Целевой/Нецелевой КЦ: …» в комментарии таймлайна.
+- `index.php` — контейнер блока 5 (бейдж + `#netselevoi-body` + `#target-status-reasons.hidden`), подключение `target-status.js` ПОСЛЕ `app.js` и ПЕРЕД `form.js`.
+
+**Ключевое ограничение:** 14 чек-боксов хранятся ТОЛЬКО в `formData` (в памяти страницы). В `crm.lead.update` они НЕ передаются — никаких новых UF-полей на портале не создаём. Передаётся только итоговый статус, и только в момент бронирования слота.
+
+**Мягкое предупреждение:** при `id === 291` (Не определено) бронирование разрешено, но КЦ видит `confirm("«Целевой/Нецелевой» не определён. Записать всё равно?")`. Отказ снимает `_bookingInProgress`, разблокирует `#btn-book-confirm`.
+
+**Полный свод правил, метки чек-боксов, поведение виджета** — см. `anketa-kc/docs/STANDARD_NETSELEVOI.md`.
+
+**Как добавить правило:** отредактировать `RULES[]` в `target-status.js`. Если нужен новый признак — добавить чек-бокс в `form.js → initForm()` (через `fieldCheckbox()`) и в `collectFormData()` (через `vc('id')`). Изменения на портале Битрикс24 НЕ требуются.
 
 ---
 

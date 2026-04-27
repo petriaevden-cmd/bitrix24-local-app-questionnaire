@@ -241,6 +241,62 @@ function fieldTextarea(id, label, value, opts) {
 }
 
 /**
+ * fieldCheckbox — генерирует HTML для одиночного чек-бокса с меткой справа.
+ *
+ * Используется в блоке «Признаки нецелевой встречи» для уточняющих
+ * флажков (нет созаёмщика по ипотеке, оспариваемые сделки, форсированный
+ * учредитель ООО и т. п.). Хранит состояние в DOM в виде стандартного
+ * <input type="checkbox">. В collectFormData() значение читается через
+ * el.checked и нормализуется к 'Y' / 'N' — единому формату Bitrix24.
+ *
+ * Реализован строго на Tailwind утилитарных классах + Flowbite-стилях
+ * чек-бокса (см. https://flowbite.com/docs/forms/checkbox/). Никакого
+ * кастомного CSS, никакого собственного JS внутри разметки.
+ *
+ * @param {string} id      — HTML-id чек-бокса (используется в collectFormData).
+ * @param {string} label   — Текст метки справа от чек-бокса.
+ * @param {boolean|string} checked — Начальное состояние (true / 'Y' = установлен).
+ * @param {object} opts    — Дополнительные опции:
+ *   opts.colSpan {bool} — Растянуть ячейку на 2 колонки сетки (по умолчанию 1).
+ *   opts.hint    {str}  — Дополнительное мелкое пояснение под меткой (опционально).
+ */
+function fieldCheckbox(id, label, checked, opts) {
+  // Если opts не передан — используем пустой объект.
+  opts = opts || {};
+
+  // Признак установленности: принимаем true / 'Y' / 1 как «отмечен».
+  // Эта же нормализация дублирует поведение _isYes() из target-status.js,
+  // чтобы рендер мог принимать значения как из чистого JS, так и из CRM.
+  const isOn = (checked === true || checked === 'Y' || checked === 1 || checked === '1');
+
+  // Расширение на 2 колонки grid-сетки контейнера блока — для длинных меток.
+  const span = opts.colSpan ? 'col-span-2' : '';
+
+  // Опциональная мелкая пояснительная подпись под меткой (мелкий серый текст).
+  // Полностью на Tailwind — никакого inline style, никакого кастомного CSS.
+  const hintHtml = opts.hint
+    ? '<p class="ms-6 text-[10px] text-gray-400 leading-tight">' + escHtml(opts.hint) + '</p>'
+    : '';
+
+  // Возвращаем HTML-строку. Tailwind + Flowbite-стили чек-бокса:
+  //   - w-4 h-4 rounded — квадрат 16x16 с лёгким скруглением;
+  //   - bg-gray-100 border border-gray-300 — мягкий серый фон и рамка по умолчанию;
+  //   - text-blue-600 — цвет «галочки» при установленном состоянии (Flowbite);
+  //   - focus:ring-2 focus:ring-blue-500 — синяя обводка при фокусе с клавиатуры.
+  // Метка использует ms-2 (margin-inline-start) — корректно работает с RTL,
+  // и text-xs — единый размер с остальной мелкой типографикой формы.
+  return '\n    <div class="flex flex-col gap-0.5 ' + span + '">' +
+         '\n      <div class="flex items-center">' +
+         '\n        <input id="' + id + '" name="' + id + '" type="checkbox"' +
+         (isOn ? ' checked' : '') +
+         '\n               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-2 focus:ring-blue-500">' +
+         '\n        <label for="' + id + '" class="ms-2 text-xs text-gray-700 leading-tight">' + label + '</label>' +
+         '\n      </div>' +
+         '\n      ' + hintHtml +
+         '\n    </div>';
+}
+
+/**
  * fieldCity — генерирует HTML для поля ввода города клиента.
  *
  * Это специальное поле с расширенными возможностями:
@@ -624,6 +680,75 @@ function initForm(lead) {
     // Дополнительный комментарий — любая прочая важная информация о клиенте.
     fieldTextarea('f-extra-comment', 'Доп. комментарий', f.UF_CRM_KC_EXTRA_COMMENT, { placeholder: 'Доп. информация...' });
 
+  // ── БЛОК 5: Признаки нецелевой встречи ────────────────────────────
+  //
+  // Блок реализует уточняющие флажки из «Стандарта НЕЦЕЛЕВОЙ встречи».
+  // Чек-боксы ХРАНЯТСЯ ТОЛЬКО В JS-СОСТОЯНИИ (formData) и НЕ ПЕРЕДАЮТСЯ
+  // в crm.lead.update — на портале специальных полей под них нет и создавать
+  // их без явного подтверждения пользователя запрещено. Итоговый статус
+  // «Целевой/Нецелевой» передаётся в БП 40 (calendar.js).
+  //
+  // Раскладка — 2 колонки. Некоторые флажки растянуты на 2 колонки (длинные метки).
+
+  // Если контейнер блока присутствует в DOM (добавляется в index.php) — рендерим флажки.
+  // Для обратной совместимости: если контейнера нет — просто пропускаем блок.
+  if (document.getElementById('netselevoi-body')) {
+    // Применяем CSS-классы двухколоночной сетки к контейнеру блока признаков.
+    _setGrid('netselevoi-body');
+
+    document.getElementById('netselevoi-body').innerHTML =
+      // —— Ипотека (базовый флажок + 2 сопутствующих риска) ——
+      // Ипотека сама по себе — целевой признак, но при рисках ниже — нецелевой.
+      fieldCheckbox('f-mortgage',                'Есть ипотека',                                                                                        false, { colSpan: true }) +
+      fieldCheckbox('f-mortgage-no-guarantor',   'Ипотека: нет созаёмщика/поручителя',                                                          false) +
+      fieldCheckbox('f-mortgage-bad-overdue',    'Ипотека: просрочки не закрыть',                                                                  false) +
+
+      // —— Залоговое имущество ——
+      // Срабатывает правило «collateral_not_ready»: залог=Y, НЕ ипотека, флажок СНЯТ.
+      // Логика в target-status.js проверяет collateralReadyToPart === 'N' — т. е.
+      // «Нецелевой» будет, если флажок НЕ отмечен при наличии залога.
+      fieldCheckbox('f-collateral-ready-to-part', 'Залог: готов расстаться с имуществом',                                                false, { colSpan: true, hint: 'Если НЕ отмечено и поле «Залог»=Да (не ипотека) — нецелевой' }) +
+
+      // —— Дополнительное имущество ——
+      // Срабатывает «extra_property_overprice_or_no_risks»: property=Y и одно из двух.
+      fieldCheckbox('f-property-over-debt',       'Доп. имущество: стоимость > сумма долга',                                              false) +
+      fieldCheckbox('f-property-ready-for-risks', 'Доп. имущество: готов к рискам реализации',                                          false, { hint: 'Если НЕ отмечено и property=Да — нецелевой' }) +
+
+      // —— Сделки в период просрочек ——
+      // Срабатывает «deals_during_overdue»: deals=Y и флажок ОТМЕЧЕН.
+      fieldCheckbox('f-deals-during-overdue',     'Сделки совершены в период просрочек',                                                  false, { colSpan: true }) +
+
+      // —— ООО (баланс и готовность) ——
+      // Срабатывает «ooo_with_balance_and_not_ready»: ooo=Y, «есть баланс»=Y и «готов»=N.
+      fieldCheckbox('f-ooo-has-balance',          'ООО: есть баланс ≈ сумме долга',                                                              false) +
+      fieldCheckbox('f-ooo-ready-to-part',        'ООО: готов расстаться с организацией',                                                       false, { hint: 'Если НЕ отмечено и «баланс»=Да — нецелевой' }) +
+
+      // —— Судимость 159 УК РФ ——
+      // Срабатывает «criminal_159_same_grounds»: criminal=Y и флажок ОТМЕЧЕН.
+      fieldCheckbox('f-criminal-159-same',        'Судимость 159 УК РФ по тем же основаниям (непогашенная)',                            false, { colSpan: true }) +
+
+      // —— Обращение за другого ——
+      // Срабатывает «for_other_person»: флажок ОТМЕЧЕН.
+      fieldCheckbox('f-for-other',                'Обращение за другого человека',                                                            false) +
+
+      // —— Несписываемый долг ——
+      // Срабатывает «non_dischargeable_debt»: флажок ОТМЕЧЕН.
+      fieldCheckbox('f-non-dischargeable',        'Долг не подлежит списанию (алименты/субсидиарка/ущерб)',                            false) +
+
+      // —— Другая компания ——
+      // Срабатывает «other_company_in_arbitration»: флажок ОТМЕЧЕН.
+      fieldCheckbox('f-other-company-as',         'Уже подан в АС другой компанией',                                                            false, { colSpan: true }) +
+
+      // —— Расчёт КМ ——
+      // Срабатывает «high_official_income» (второй предикат правила): incomeKmBad === 'Y'.
+      // Первый предикат — incomeOfficial === 'high' из блока «Финансы» — работает сам по себе.
+      fieldCheckbox('f-income-km-bad',            'Невыгодно по расчёту КМ (высокий доход/льготы)',                                              false, { colSpan: true });
+  }
+
+  // После рендера всех полей — первичный расчёт статуса «Целевой/Нецелевой»,
+  // чтобы виджет-индикатор отображал актуальное состояние с момента открытия формы.
+  updateTargetStatusWidget();
+
   // После рендера всех полей — пересчитываем прогресс заполнения формы.
   // Это нужно для корректного отображения полосы прогресса при инициализации,
   // когда часть полей уже заполнена данными из лида.
@@ -853,6 +978,16 @@ function collectFormData() {
     return el ? el.value.trim() : '';
   }
 
+  // Вспомогательная функция для чек-боксов: возвращает 'Y' или 'N'
+  // в формате Bitrix24 для булевых полей. Используется в evaluateTargetStatus()
+  // (target-status.js) — предикаты правил ожидают именно строки 'Y'/'N'.
+  // Если элемент не найден (контейнер netselevoi-body отсутствует) — возвращает ''.
+  function vc(id) {
+    const el = document.getElementById(id);
+    if (!el) return '';
+    return el.checked ? 'Y' : 'N';
+  }
+
   // Собираем и возвращаем объект со всеми полями.
   // Ключи объекта — произвольные camelCase-имена (используются в saveForm/addTimelineComment).
   // Значения — результаты вызова v() с id конкретного поля.
@@ -880,9 +1015,110 @@ function collectFormData() {
     kmExclusion:       v('f-km-exclusion'),              // Исключение из кредитного менеджера
     mainPain:          v('f-main-pain'),                 // Основная боль/проблема клиента
     objections:        v('f-objections'),                // Возражения клиента
-    extraComment:      v('f-extra-comment')              // Дополнительный комментарий менеджера
+    extraComment:      v('f-extra-comment'),             // Дополнительный комментарий менеджера
+
+    // ── БЛОК 5: Чек-боксы «Признаки нецелевой встречи» ─────────────────
+    // Используются ТОЛЬКО внутри evaluateTargetStatus() и в timeline-комментарии.
+    // В crm.lead.update НЕ передаются — на портале полей под них нет и создавать
+    // их без явного подтверждения пользователя запрещено.
+    mortgage:                vc('f-mortgage'),                 // Есть ипотека
+    mortgageNoGuarantor:     vc('f-mortgage-no-guarantor'),    // Ипотека: нет созаёмщика
+    mortgageBadOverdue:      vc('f-mortgage-bad-overdue'),     // Ипотека: просрочки не закрыть
+    collateralReadyToPart:   vc('f-collateral-ready-to-part'), // Залог: готов расстаться
+    propertyOverDebt:        vc('f-property-over-debt'),       // Доп. имущество: стоимость > долга
+    propertyReadyForRisks:   vc('f-property-ready-for-risks'), // Доп. имущество: готов к рискам
+    dealsDuringOverdue:      vc('f-deals-during-overdue'),     // Сделки в период просрочек
+    oooHasBalance:           vc('f-ooo-has-balance'),          // ООО: есть баланс
+    oooReadyToPart:          vc('f-ooo-ready-to-part'),        // ООО: готов расстаться
+    criminal159SameGrounds:  vc('f-criminal-159-same'),        // Судимость 159 УК РФ по тем же основаниям
+    forOther:                vc('f-for-other'),                // Обращение за другого человека
+    nonDischargeable:        vc('f-non-dischargeable'),        // Долг не подлежит списанию
+    otherCompanyAS:          vc('f-other-company-as'),         // Уже подан в АС другой компанией
+    incomeKmBad:             vc('f-income-km-bad')             // Невыгодно по расчёту КМ
   };
 }
+
+// ─── Виджет статуса «Целевой/Нецелевой» ──────────────────────────
+
+/**
+ * updateTargetStatusWidget — пересчитывает статус «Целевой/Нецелевой/
+ * Не определено» по текущим данным формы и обновляет виджет-индикатор
+ * в блоке «Признаки нецелевой встречи».
+ *
+ * ЛОГИКА:
+ *   1. Собирает данные формы через collectFormData().
+ *   2. Вызывает TargetStatus.evaluate(formData) из target-status.js.
+ *   3. Сохраняет результат в window.__targetStatus — используется в
+ *      calendar.js для передачи в БП и в timeline-комментарий.
+ *   4. Обновляет DOM-элементы виджета:
+ *      - #target-status-badge — бейдж с лейблом и цветом по статусу:
+ *         зелёный — Целевой, красный — Нецелевой, жёлтый — Не определено.
+ *      - #target-status-reasons — список причин (сработавших правил).
+ *
+ * Эти элементы присутствуют в разметке блока «Признаки нецелевой» в index.php.
+ * Если их нет — функция безопасно пропускает обновление (работает в симуляторе).
+ */
+function updateTargetStatusWidget() {
+  // Если модуль target-status.js не подключён — выходим без ошибки.
+  // Это обеспечивает обратную совместимость, если файл подключён не везде.
+  if (typeof window.TargetStatus === 'undefined' ||
+      typeof window.TargetStatus.evaluate !== 'function') {
+    return;
+  }
+
+  // Посчитать статус по текущим данным формы.
+  var formData = collectFormData();
+  var status   = window.TargetStatus.evaluate(formData);
+
+  // Сохранить результат в глобальной переменной, чтобы calendar.js мог
+  // прочитать итоговый status.id перед вызовом bizproc.workflow.start.
+  window.__targetStatus = status;
+
+  // Обновляем бейдж (цвет + лейбл).
+  var badgeEl = document.getElementById('target-status-badge');
+  if (badgeEl) {
+    // Базовые классы бейджа в стиле Flowbite (https://flowbite.com/docs/components/badge/).
+    var baseCls = 'inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium';
+    // Цветовая схема по статусу — стандартные Tailwind/Flowbite классы.
+    var colorCls = 'bg-yellow-100 text-yellow-800'; // Не определено (жёлтый).
+    if (status.id === window.TargetStatus.IDS.TARGET) {
+      colorCls = 'bg-green-100 text-green-800'; // Целевой (зелёный).
+    } else if (status.id === window.TargetStatus.IDS.NON_TARGET) {
+      colorCls = 'bg-red-100 text-red-800'; // Нецелевой (красный).
+    }
+    badgeEl.className   = baseCls + ' ' + colorCls;
+    badgeEl.textContent = status.label;
+  }
+
+  // Обновляем список причин (виден только если есть хотя бы одна).
+  var reasonsEl = document.getElementById('target-status-reasons');
+  if (reasonsEl) {
+    if (status.reasons && status.reasons.length > 0) {
+      // Рендерим как <ul> с пулями. escHtml() защищает от XSS.
+      var items = status.reasons.map(function (r) {
+        return '<li>' + escHtml(r) + '</li>';
+      }).join('');
+      reasonsEl.innerHTML = '<ul class="list-disc list-inside space-y-0.5 text-[11px] text-gray-600">' + items + '</ul>';
+      reasonsEl.classList.remove('hidden');
+    } else {
+      // Причин нет («Целевой» без сработавших правил) — скрываем блок.
+      reasonsEl.innerHTML = '';
+      reasonsEl.classList.add('hidden');
+    }
+  }
+}
+
+// Делегированный обработчик 'change'/'input' на самой форме — пересчёт виджета
+// статуса при любом изменении поля внутри #anketa-form. Использует event delegation,
+// чтобы работало и для динамически вставленных в DOM чек-боксов (innerHTML в initForm).
+// Оба события нужны: 'change' — для чек-боксов/селектов, 'input' — для текстовых полей
+// (изменение долга или дохода должно сразу обновлять индикатор).
+document.addEventListener('change', function (e) {
+  if (e.target.closest('#anketa-form')) updateTargetStatusWidget();
+});
+document.addEventListener('input', function (e) {
+  if (e.target.closest('#anketa-form')) updateTargetStatusWidget();
+});
 
 // ─── Валидация ───────────────────────────────────────────────────────────────
 
